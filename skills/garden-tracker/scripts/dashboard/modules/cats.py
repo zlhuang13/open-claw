@@ -1,10 +1,23 @@
 """Cats diary module - daily cat logs and memories."""
 import calendar
 import html
+import io
 import os
 import sqlite3
 from collections import Counter, defaultdict
 from urllib.parse import parse_qs
+
+import matplotlib
+matplotlib.use('Agg')
+from matplotlib import font_manager
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+
+matplotlib.rcParams['font.sans-serif'] = ['WenQuanYi Zen Hei', 'Noto Sans CJK SC', 'Noto Sans CJK JP', 'SimHei', 'Microsoft YaHei', 'DejaVu Sans']
+matplotlib.rcParams['font.family'] = 'sans-serif'
+matplotlib.rcParams['axes.unicode_minus'] = False
+CJK_FONT = font_manager.FontProperties(family='WenQuanYi Zen Hei')
 
 ROUTE = '/cats'
 TITLE = '🐱 Cat Diary'
@@ -100,7 +113,9 @@ def _calendar_grid(entries, month_filter):
                 continue
             visible_entries = [e for e in day_map.get(day, []) if '体重' not in (e.get('tags') or [])]
             items = ''.join(
-                f'<div class="calendar-item">{" / ".join(html.escape(c) for c in e.get("cats", [])) or "记录"}: {html.escape((e.get("content") or "")[:16])}</div>'
+                f'<div class="calendar-item {("cat-moscar" if "Moscar" in e.get("cats", []) else "cat-nomi")}">' \
+                f'<span class="calendar-cat">{"Moscar" if "Moscar" in e.get("cats", []) else "Nomi"}</span>' \
+                f'<span class="calendar-note">{html.escape((e.get("tags") or [e.get("content") or "记录"])[0])}</span></div>'
                 for e in visible_entries[:3]
             )
             more = ''
@@ -149,6 +164,49 @@ def is_enabled():
 
 def nav():
     return '<a href="/">🖤 Kuro</a><span class="sep">›</span><span>Cat Diary</span>'
+
+
+def render_weight_chart(params=None):
+    params = params or _params()
+    entries = _load_entries(params.get('cat', ''), params.get('month', ''), params.get('q', ''))
+    weight_entries = [e for e in entries if '体重' in (e.get('tags') or []) and e.get('weight') not in (None, '')]
+    if not weight_entries:
+        return None
+
+    range_map = {'3m': 3, '1y': 12, 'all': None}
+    selected_range = params.get('range') or 'all'
+    months_limit = range_map.get(selected_range)
+
+    rows = []
+    for e in sorted(weight_entries, key=lambda x: x.get('entry_date') or ''):
+        for cat in e.get('cats', []):
+            rows.append({'date': e.get('entry_date'), 'cat': cat, 'weight': float(e.get('weight'))})
+    if not rows:
+        return None
+
+    df = pd.DataFrame(rows)
+    df['date'] = pd.to_datetime(df['date'])
+    if months_limit is not None and not df.empty:
+        max_date = df['date'].max()
+        cutoff = max_date - pd.DateOffset(months=months_limit)
+        df = df[df['date'] >= cutoff].copy()
+    sns.set_theme(style='whitegrid')
+    fig, ax = plt.subplots(figsize=(8, 4.8), dpi=140)
+    palette = {'Moscar': '#5b8def', 'Nomi（糯米）': '#e67aa4'}
+    sns.lineplot(data=df, x='date', y='weight', hue='cat', marker='o', linewidth=2.2, palette=palette, ax=ax)
+    ax.set_xlabel('日期', fontproperties=CJK_FONT)
+    ax.set_ylabel('体重 (kg)', fontproperties=CJK_FONT)
+    ax.tick_params(axis='x', rotation=45)
+    legend = ax.legend(title='猫咪')
+    if legend:
+        legend.get_title().set_fontproperties(CJK_FONT)
+        for text in legend.get_texts():
+            text.set_fontproperties(CJK_FONT)
+    fig.tight_layout()
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png', bbox_inches='tight')
+    plt.close(fig)
+    return buf.getvalue()
 
 
 def render():
@@ -243,40 +301,13 @@ def render():
 
     chart_html = ''
     if weight_entries:
-        by_cat = defaultdict(list)
-        for e in sorted(weight_entries, key=lambda x: x.get('entry_date') or ''):
-            for cat in e.get('cats', []):
-                by_cat[cat].append((e.get('entry_date'), float(e.get('weight'))))
-        cards = []
-        colors = {'Moscar': '#5b8def', 'Nomi（糯米）': '#e67aa4'}
-        range_map = {'3m': 6, '1y': 12, 'all': None}
         selected_range = params.get('range') or 'all'
-        months_limit = range_map.get(selected_range)
         range_links = ' '.join(
             f'<a class="range-chip {"active" if selected_range == key else ""}" href="/cats?cat={html.escape(params["cat"])}&month={html.escape(params["month"])}&q={html.escape(params["q"])}&range={key}">{label}</a>'
             for key, label in [('3m', '最近3个月'), ('1y', '最近1年'), ('all', '全部')]
         )
-        for cat, points in by_cat.items():
-            if not points:
-                continue
-            if months_limit is not None and len(points) > months_limit:
-                points = points[-months_limit:]
-            weights = [p[1] for p in points]
-            min_w, max_w = min(weights), max(weights)
-            spread = max(max_w - min_w, 0.2)
-            coords = []
-            total = max(len(points) - 1, 1)
-            for i, (dt, w) in enumerate(points):
-                x = 40 + (320 * i / total)
-                y = 180 - (130 * ((w - min_w) / spread))
-                coords.append((x, y, dt, w))
-            poly = ' '.join(f'{x:.1f},{y:.1f}' for x, y, _, _ in coords)
-            dots = ''.join(f'<g><circle cx="{x:.1f}" cy="{y:.1f}" r="4" fill="{colors.get(cat, "#4a7")}"><title>{html.escape(dt)} · {w:.2f} kg</title></circle><text x="{x:.1f}" y="{y-10:.1f}" font-size="10" text-anchor="middle" fill="#444">{w:.2f}</text></g>' for x, y, dt, w in coords)
-            xlabels = ''.join(f'<text x="{x:.1f}" y="198" font-size="10" text-anchor="middle" fill="#777">{html.escape(dt[2:].replace("-", "/"))}</text>' for x, _, dt, _ in coords)
-            delta = points[-1][1] - points[0][1] if len(points) > 1 else 0
-            delta_text = f'{delta:+.2f} kg'
-            cards.append(f'<div class="weight-chart-card"><div class="chart-head"><h3>{html.escape(cat)} 体重趋势</h3><span class="chart-delta">{delta_text}</span></div><svg viewBox="0 0 400 220" class="weight-chart"><line x1="40" y1="180" x2="370" y2="180" stroke="#ccc" /><line x1="40" y1="20" x2="40" y2="180" stroke="#ccc" /><polyline fill="none" stroke="{colors.get(cat, "#4a7")}" stroke-width="3" points="{poly}" />{dots}{xlabels}</svg><p class="chart-range">范围 {min_w:.2f} kg 到 {max_w:.2f} kg，最新 {points[-1][1]:.2f} kg</p></div>')
-        chart_html = '<h2>⚖️ 体重折线图</h2><div class="range-chip-row">' + range_links + '</div><div class="weight-chart-grid">' + ''.join(cards) + '</div>'
+        chart_src = f'/cats/weight-chart.png?cat={html.escape(params["cat"])}&month={html.escape(params["month"])}&q={html.escape(params["q"])}&range={html.escape(selected_range)}&v={html.escape(params["month"])}-{html.escape(params["cat"])}-{html.escape(params["q"])}-{html.escape(selected_range)}'
+        chart_html = '<h2>⚖️ 体重折线图</h2><div class="range-chip-row">' + range_links + f'</div><div class="weight-chart-card"><img class="weight-chart" src="{chart_src}" alt="体重折线图"></div>'
 
     entries_html = ''
     current_month = ''
