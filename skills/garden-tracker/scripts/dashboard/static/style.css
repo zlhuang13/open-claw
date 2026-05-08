@@ -63,6 +63,24 @@ li { margin: 2px 0; }
 .diary-content { font-size: 14px; line-height: 1.6; }
 .month-header { margin: 20px 0 8px; font-size: 15px; color: #888; border: none; padding: 0; }
 
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.stat-card { background: white; border-radius: 12px; padding: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.stat-label { font-size: 12px; color: #888; margin-bottom: 6px; }
+.stat-value { font-size: 15px; font-weight: 600; line-height: 1.4; }
+.filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.filter-bar select, .filter-bar input, .filter-bar button { padding: 10px 12px; border-radius: 10px; border: 1px solid #ddd; font-size: 14px; background: white; }
+.filter-bar button { background: #1a1a2e; color: white; border: none; }
+.filter-reset { display: inline-flex; align-items: center; color: #666; text-decoration: none; padding: 10px 6px; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-bottom: 16px; }
+.calendar-head { font-size: 12px; color: #777; text-align: center; }
+.calendar-cell { background: white; min-height: 92px; border-radius: 12px; padding: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.empty-cell { background: transparent; box-shadow: none; }
+.calendar-day { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+.calendar-item { font-size: 11px; color: #444; margin-bottom: 4px; line-height: 1.35; }
+.calendar-more { font-size: 11px; color: #888; }
+.trend-list { display: grid; gap: 8px; margin-bottom: 16px; }
+.trend-item { display: flex; justify-content: space-between; background: white; border-radius: 12px; padding: 12px 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+
 /* Plant photos */
 .plant-photo { width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 12px; }
 

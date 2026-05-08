@@ -87,6 +87,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 data = f.read()
         elif path in route_map:
             m = route_map[path]
+            if hasattr(m, 'set_request_query'):
+                m.set_request_query(self.path.split('?', 1)[1] if '?' in self.path else '')
             data = wrap(m.TITLE, m.nav(), m.render()).encode('utf-8')
             ct = 'text/html'
         else:
