@@ -1,0 +1,17 @@
+{
+  "cats": {
+    "Moscar": {
+      "emoji": "🐱",
+      "gender": "boy",
+      "birthday": "2021-06-15",
+      "photo": "moscar.jpg"
+    },
+    "Nomi（糯米）": {
+      "emoji": "🐈",
+      "gender": "girl",
+      "birthday": "2023-04-03",
+      "photo": "nomi.jpg"
+    }
+  },
+  "entries": []
+}
