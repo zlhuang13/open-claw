@@ -97,13 +97,14 @@ def _calendar_grid(entries, month_filter):
             if day == 0:
                 cells += '<div class="calendar-cell empty-cell"></div>'
                 continue
+            visible_entries = [e for e in day_map.get(day, []) if '体重' not in (e.get('tags') or [])]
             items = ''.join(
                 f'<div class="calendar-item">{" / ".join(html.escape(c) for c in e.get("cats", [])) or "记录"}: {html.escape((e.get("content") or "")[:16])}</div>'
-                for e in day_map.get(day, [])[:3]
+                for e in visible_entries[:3]
             )
             more = ''
-            if len(day_map.get(day, [])) > 3:
-                more = f'<div class="calendar-more">+{len(day_map.get(day, [])) - 3} 条</div>'
+            if len(visible_entries) > 3:
+                more = f'<div class="calendar-more">+{len(visible_entries) - 3} 条</div>'
             cells += f'<div class="calendar-cell"><div class="calendar-day">{day}</div>{items}{more}</div>'
     return f'<h2>🗓️ 月历视图</h2><div class="calendar-grid">{header}{cells}</div>'
 
@@ -183,11 +184,13 @@ def render():
         for cat in e.get('cats', []):
             cat_counter[cat] += 1
 
+    non_weight_entries = [e for e in entries if '体重' not in (e.get('tags') or [])]
+    weight_entries = [e for e in entries if '体重' in (e.get('tags') or []) and e.get('weight') not in (None, '')]
     stat_cards = [
-        ('总记录', str(len(entries))),
-        ('Moscar', str(cat_counter.get('Moscar', 0))),
-        ('Nomi', str(cat_counter.get('Nomi（糯米）', 0))),
-        ('常见标签', '、'.join(f'{k} {v}次' for k, v in symptom_counter.most_common(4)) or '暂无'),
+        ('日常记录', str(len(non_weight_entries))),
+        ('Moscar', str(sum(1 for e in non_weight_entries if 'Moscar' in e.get('cats', [])))),
+        ('Nomi', str(sum(1 for e in non_weight_entries if 'Nomi（糯米）' in e.get('cats', [])))),
+        ('常见标签', '、'.join(f'{k} {v}次' for k, v in symptom_counter.most_common(6) if k != '体重') or '暂无'),
     ]
     stats_html = ''.join(f'<div class="stat-card"><div class="stat-label">{html.escape(k)}</div><div class="stat-value">{html.escape(v)}</div></div>' for k, v in stat_cards)
 
@@ -216,38 +219,57 @@ def render():
         f'<label class="check-pill"><input type="checkbox" name="tag" value="{html.escape(tag)}"> <span>{html.escape(tag)}</span></label>'
         for tag in COMMON_TAGS
     )
-    add_form_html = f'''<h2>➕ 添加记录</h2>
-<form class="entry-form" method="get" action="/cats">
-    <input type="hidden" name="action" value="add">
-    <input type="hidden" name="ok" value="1">
-    <div class="form-grid">
-        <label><span>日期</span><input type="date" name="date" required></label>
-        <label><span>心情</span><select name="mood"><option value="">-</option><option value="happy">开心</option><option value="sleepy">困</option><option value="sick">不舒服</option><option value="playful">活泼</option><option value="naughty">淘气</option></select></label>
-        <label class="wide"><span>猫咪</span><div class="pill-group">{add_cat_checks}</div></label>
-        <label class="wide"><span>记录内容</span><textarea name="content" rows="3" placeholder="比如：今天吐毛球，精神还可以" required></textarea></label>
-        <label><span>饮食</span><input type="text" name="food" placeholder="吃了什么"></label>
-        <label><span>便便</span><input type="text" name="stool" placeholder="正常/软便/拉肚子"></label>
-        <label><span>体重 kg</span><input type="number" name="weight" step="0.01" placeholder="4.25"></label>
-        <label><span>用药</span><input type="text" name="medication" placeholder="药名"></label>
-        <label class="wide"><span>症状标签</span><div class="pill-group">{tag_checks}</div></label>
-        <label class="wide"><span>补充标签</span><input type="text" name="extra_tags" placeholder="多个标签用逗号隔开"></label>
-        <label class="wide"><span>备注</span><textarea name="notes" rows="2" placeholder="别的细节"></textarea></label>
-    </div>
-    <button class="submit-btn" type="submit">保存记录</button>
-    {"<span class='save-ok'>已保存 ✅</span>" if params['ok'] == '1' else ''}
-</form>'''
+    add_form_html = f'''<details class="entry-panel" {"open" if params['ok'] == '1' else ''}>
+    <summary>➕ 添加记录 {"<span class='save-ok'>已保存 ✅</span>" if params['ok'] == '1' else ''}</summary>
+    <form class="entry-form" method="get" action="/cats">
+        <input type="hidden" name="action" value="add">
+        <input type="hidden" name="ok" value="1">
+        <div class="form-grid">
+            <label><span>日期</span><input type="date" name="date" required></label>
+            <label><span>心情</span><select name="mood"><option value="">-</option><option value="happy">开心</option><option value="sleepy">困</option><option value="sick">不舒服</option><option value="playful">活泼</option><option value="naughty">淘气</option></select></label>
+            <label class="wide"><span>猫咪</span><div class="pill-group">{add_cat_checks}</div></label>
+            <label class="wide"><span>记录内容</span><textarea name="content" rows="3" placeholder="比如：今天吐毛球，精神还可以" required></textarea></label>
+            <label><span>饮食</span><input type="text" name="food" placeholder="吃了什么"></label>
+            <label><span>便便</span><input type="text" name="stool" placeholder="正常/软便/拉肚子"></label>
+            <label><span>体重 kg</span><input type="number" name="weight" step="0.01" placeholder="4.25"></label>
+            <label><span>用药</span><input type="text" name="medication" placeholder="药名"></label>
+            <label class="wide"><span>症状标签</span><div class="pill-group">{tag_checks}</div></label>
+            <label class="wide"><span>补充标签</span><input type="text" name="extra_tags" placeholder="多个标签用逗号隔开"></label>
+            <label class="wide"><span>备注</span><textarea name="notes" rows="2" placeholder="别的细节"></textarea></label>
+        </div>
+        <button class="submit-btn" type="submit">保存记录</button>
+    </form>
+</details>'''
 
-    trend_html = ''
-    if monthly_counter:
-        trend_html = '<h2>📈 月度记录</h2><div class="trend-list">' + ''.join(
-            f'<div class="trend-item"><span>{html.escape(month)}</span><strong>{count} 条</strong></div>'
-            for month, count in sorted(monthly_counter.items(), reverse=True)
-        ) + '</div>'
+    chart_html = ''
+    if weight_entries:
+        by_cat = defaultdict(list)
+        for e in sorted(weight_entries, key=lambda x: x.get('entry_date') or ''):
+            for cat in e.get('cats', []):
+                by_cat[cat].append((e.get('entry_date'), float(e.get('weight'))))
+        cards = []
+        colors = {'Moscar': '#5b8def', 'Nomi（糯米）': '#e67aa4'}
+        for cat, points in by_cat.items():
+            if not points:
+                continue
+            weights = [p[1] for p in points]
+            min_w, max_w = min(weights), max(weights)
+            spread = max(max_w - min_w, 0.2)
+            coords = []
+            total = max(len(points) - 1, 1)
+            for i, (dt, w) in enumerate(points):
+                x = 40 + (320 * i / total)
+                y = 180 - (130 * ((w - min_w) / spread))
+                coords.append((x, y, dt, w))
+            poly = ' '.join(f'{x:.1f},{y:.1f}' for x, y, _, _ in coords)
+            dots = ''.join(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="3.5" fill="{colors.get(cat, "#4a7")}"></circle><text x="{x:.1f}" y="{y+18:.1f}" font-size="10" text-anchor="middle" fill="#777">{html.escape(dt[5:])}</text><text x="{x:.1f}" y="{y-8:.1f}" font-size="10" text-anchor="middle" fill="#444">{w:.2f}</text>' for x, y, dt, w in coords)
+            cards.append(f'<div class="weight-chart-card"><h3>{html.escape(cat)} 体重趋势</h3><svg viewBox="0 0 400 220" class="weight-chart"><line x1="40" y1="180" x2="370" y2="180" stroke="#ccc" /><line x1="40" y1="20" x2="40" y2="180" stroke="#ccc" /><polyline fill="none" stroke="{colors.get(cat, "#4a7")}" stroke-width="3" points="{poly}" />{dots}</svg><p class="chart-range">范围 {min_w:.2f} kg 到 {max_w:.2f} kg</p></div>')
+        chart_html = '<h2>⚖️ 体重折线图</h2><div class="weight-chart-grid">' + ''.join(cards) + '</div>'
 
     entries_html = ''
     current_month = ''
     mood_map = {'happy': '😸', 'sleepy': '😴', 'sick': '🤒', 'playful': '😸', 'naughty': '😾'}
-    for e in entries:
+    for e in non_weight_entries:
         date = e.get('entry_date') or ''
         month = date[:7] if len(date) >= 7 else ''
         if month and month != current_month:
@@ -259,7 +281,7 @@ def render():
         mood_icon = mood_map.get(mood, '')
         content = html.escape(e.get('content') or '')
         extras = []
-        for label, key in [('饮食', 'food'), ('便便', 'stool'), ('体重', 'weight'), ('用药', 'medication'), ('备注', 'notes')]:
+        for label, key in [('饮食', 'food'), ('便便', 'stool'), ('用药', 'medication'), ('备注', 'notes')]:
             val = e.get(key)
             if val not in (None, ''):
                 extras.append(f'<li><strong>{label}</strong> {html.escape(str(val))}</li>')
@@ -283,8 +305,8 @@ def render():
 <h2>📊 健康概览</h2><div class="stats-grid">{stats_html}</div>
 {add_form_html}
 {filters_html}
+{chart_html}
 {calendar_html}
-{trend_html}
 <h2>📝 日记</h2>
 <div class="diary-list">
     {entries_html if entries_html else '<p class="empty">当前筛选下还没有记录～</p>'}
