@@ -15,6 +15,7 @@ DATA_DIR = '/home/ubuntu/.openclaw/workspace/skills/garden-tracker/data'
 PROFILES_DB = os.path.join(DATA_DIR, 'cats_profiles.db')
 DIARY_DB = os.path.join(DATA_DIR, 'cats_diary.db')
 REQUEST_QUERY = ''
+COMMON_TAGS = ['呕吐', '吐毛球', '拉肚子', '软便', '食欲差', '没精神', '打喷嚏', '咳嗽', '吃药', '看医生']
 
 
 def set_request_query(query):
@@ -28,6 +29,7 @@ def _params():
         'cat': (parsed.get('cat') or [''])[0],
         'month': (parsed.get('month') or [''])[0],
         'q': (parsed.get('q') or [''])[0],
+        'ok': (parsed.get('ok') or [''])[0],
     }
 
 
@@ -39,7 +41,7 @@ def _profiles():
     return rows
 
 
-def _entries(cat_filter='', month_filter='', q=''):
+def _load_entries(cat_filter='', month_filter='', q=''):
     conn = sqlite3.connect(DIARY_DB)
     conn.row_factory = sqlite3.Row
     sql = '''
@@ -52,15 +54,17 @@ def _entries(cat_filter='', month_filter='', q=''):
         sql += ' AND substr(e.entry_date, 1, 7) = ?'
         args.append(month_filter)
     if q:
-        sql += ' AND (e.content LIKE ? OR ifnull(e.symptom,"") LIKE ? OR ifnull(e.notes,"") LIKE ? OR ifnull(e.food,"") LIKE ? OR ifnull(e.stool,"") LIKE ? OR ifnull(e.medication,"") LIKE ?)'
+        sql += ' AND (e.content LIKE ? OR ifnull(e.symptom,"") LIKE ? OR ifnull(e.notes,"") LIKE ? OR ifnull(e.food,"") LIKE ? OR ifnull(e.stool,"") LIKE ? OR ifnull(e.medication,"") LIKE ? OR EXISTS (SELECT 1 FROM entry_tags t WHERE t.entry_id = e.id AND t.tag LIKE ?))'
         like = f'%{q}%'
-        args.extend([like] * 6)
+        args.extend([like] * 7)
     sql += ' ORDER BY e.entry_date DESC, e.id DESC'
     rows = [dict(r) for r in conn.execute(sql, args).fetchall()]
     filtered = []
     for row in rows:
         cats = [r[0] for r in conn.execute('SELECT cat_name FROM entry_cats WHERE entry_id = ? ORDER BY cat_name', (row['id'],)).fetchall()]
+        tags = [r[0] for r in conn.execute('SELECT tag FROM entry_tags WHERE entry_id = ? ORDER BY tag', (row['id'],)).fetchall()]
         row['cats'] = cats
+        row['tags'] = tags
         if cat_filter and cat_filter not in cats:
             continue
         filtered.append(row)
@@ -104,6 +108,39 @@ def _calendar_grid(entries, month_filter):
     return f'<h2>🗓️ 月历视图</h2><div class="calendar-grid">{header}{cells}</div>'
 
 
+def _save_entry(query):
+    parsed = parse_qs(query, keep_blank_values=True)
+    if parsed.get('action', [''])[0] != 'add':
+        return
+    date = (parsed.get('date') or [''])[0].strip()
+    cats = [c for c in parsed.get('cat') if c.strip()]
+    content = (parsed.get('content') or [''])[0].strip()
+    if not date or not cats or not content:
+        return
+    mood = (parsed.get('mood') or [''])[0].strip()
+    food = (parsed.get('food') or [''])[0].strip()
+    stool = (parsed.get('stool') or [''])[0].strip()
+    weight = (parsed.get('weight') or [''])[0].strip()
+    medication = (parsed.get('medication') or [''])[0].strip()
+    notes = (parsed.get('notes') or [''])[0].strip()
+    tags = [t.strip() for t in parsed.get('tag') if t.strip()]
+    extra_tags = [t.strip() for t in (parsed.get('extra_tags') or [''])[0].split(',') if t.strip()]
+    all_tags = sorted(set(tags + extra_tags))
+    symptom = '、'.join(all_tags)
+    conn = sqlite3.connect(DIARY_DB)
+    cur = conn.execute(
+        'INSERT INTO diary_entries (entry_date, content, mood, symptom, food, stool, weight, medication, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        (date, content, mood, symptom, food, stool, float(weight) if weight else None, medication, notes)
+    )
+    entry_id = cur.lastrowid
+    for cat in cats:
+        conn.execute('INSERT OR IGNORE INTO entry_cats (entry_id, cat_name) VALUES (?, ?)', (entry_id, cat))
+    for tag in all_tags:
+        conn.execute('INSERT OR IGNORE INTO entry_tags (entry_id, tag) VALUES (?, ?)', (entry_id, tag))
+    conn.commit()
+    conn.close()
+
+
 def is_enabled():
     return os.path.exists(PROFILES_DB) and os.path.exists(DIARY_DB)
 
@@ -113,9 +150,11 @@ def nav():
 
 
 def render():
+    if REQUEST_QUERY:
+        _save_entry(REQUEST_QUERY)
     params = _params()
     cats_info = _profiles()
-    entries = _entries(params['cat'], params['month'], params['q'])
+    entries = _load_entries(params['cat'], params['month'], params['q'])
     months = _all_months()
     cat_names = [c.get('display_name') or c.get('name') for c in cats_info]
 
@@ -138,13 +177,8 @@ def render():
     monthly_counter = Counter()
     cat_counter = Counter()
     for e in entries:
-        if e.get('symptom'):
-            symptom_counter[e['symptom']] += 1
-        content = e.get('content') or ''
-        if '吐' in content:
-            symptom_counter['呕吐/吐毛球'] += 1
-        if '拉肚子' in content or '腹泻' in content:
-            symptom_counter['拉肚子'] += 1
+        for tag in e.get('tags', []):
+            symptom_counter[tag] += 1
         monthly_counter[(e.get('entry_date') or '')[:7]] += 1
         for cat in e.get('cats', []):
             cat_counter[cat] += 1
@@ -153,7 +187,7 @@ def render():
         ('总记录', str(len(entries))),
         ('Moscar', str(cat_counter.get('Moscar', 0))),
         ('Nomi', str(cat_counter.get('Nomi（糯米）', 0))),
-        ('常见症状', '、'.join(f'{k} {v}次' for k, v in symptom_counter.most_common(3)) or '暂无'),
+        ('常见标签', '、'.join(f'{k} {v}次' for k, v in symptom_counter.most_common(4)) or '暂无'),
     ]
     stats_html = ''.join(f'<div class="stat-card"><div class="stat-label">{html.escape(k)}</div><div class="stat-value">{html.escape(v)}</div></div>' for k, v in stat_cards)
 
@@ -174,6 +208,35 @@ def render():
     <a class="filter-reset" href="/cats">重置</a>
 </form>'''
 
+    add_cat_checks = ''.join(
+        f'<label class="check-pill"><input type="checkbox" name="cat" value="{html.escape(name)}"> <span>{html.escape(name)}</span></label>'
+        for name in cat_names
+    )
+    tag_checks = ''.join(
+        f'<label class="check-pill"><input type="checkbox" name="tag" value="{html.escape(tag)}"> <span>{html.escape(tag)}</span></label>'
+        for tag in COMMON_TAGS
+    )
+    add_form_html = f'''<h2>➕ 添加记录</h2>
+<form class="entry-form" method="get" action="/cats">
+    <input type="hidden" name="action" value="add">
+    <input type="hidden" name="ok" value="1">
+    <div class="form-grid">
+        <label><span>日期</span><input type="date" name="date" required></label>
+        <label><span>心情</span><select name="mood"><option value="">-</option><option value="happy">开心</option><option value="sleepy">困</option><option value="sick">不舒服</option><option value="playful">活泼</option><option value="naughty">淘气</option></select></label>
+        <label class="wide"><span>猫咪</span><div class="pill-group">{add_cat_checks}</div></label>
+        <label class="wide"><span>记录内容</span><textarea name="content" rows="3" placeholder="比如：今天吐毛球，精神还可以" required></textarea></label>
+        <label><span>饮食</span><input type="text" name="food" placeholder="吃了什么"></label>
+        <label><span>便便</span><input type="text" name="stool" placeholder="正常/软便/拉肚子"></label>
+        <label><span>体重 kg</span><input type="number" name="weight" step="0.01" placeholder="4.25"></label>
+        <label><span>用药</span><input type="text" name="medication" placeholder="药名"></label>
+        <label class="wide"><span>症状标签</span><div class="pill-group">{tag_checks}</div></label>
+        <label class="wide"><span>补充标签</span><input type="text" name="extra_tags" placeholder="多个标签用逗号隔开"></label>
+        <label class="wide"><span>备注</span><textarea name="notes" rows="2" placeholder="别的细节"></textarea></label>
+    </div>
+    <button class="submit-btn" type="submit">保存记录</button>
+    {"<span class='save-ok'>已保存 ✅</span>" if params['ok'] == '1' else ''}
+</form>'''
+
     trend_html = ''
     if monthly_counter:
         trend_html = '<h2>📈 月度记录</h2><div class="trend-list">' + ''.join(
@@ -191,11 +254,12 @@ def render():
             current_month = month
             entries_html += f'<h3 class="month-header">{html.escape(month)}</h3>'
         cat_tags = ''.join(f'<span class="cat-tag-diary">{html.escape(t)}</span>' for t in e.get('cats', []))
+        tag_html = ''.join(f'<span class="entry-tag">{html.escape(t)}</span>' for t in e.get('tags', []))
         mood = e.get('mood') or ''
         mood_icon = mood_map.get(mood, '')
         content = html.escape(e.get('content') or '')
         extras = []
-        for label, key in [('症状', 'symptom'), ('饮食', 'food'), ('便便', 'stool'), ('体重', 'weight'), ('用药', 'medication'), ('备注', 'notes')]:
+        for label, key in [('饮食', 'food'), ('便便', 'stool'), ('体重', 'weight'), ('用药', 'medication'), ('备注', 'notes')]:
             val = e.get(key)
             if val not in (None, ''):
                 extras.append(f'<li><strong>{label}</strong> {html.escape(str(val))}</li>')
@@ -207,6 +271,7 @@ def render():
                 {f'<span class="diary-mood">{mood_icon}</span>' if mood else ''}
             </div>
             <p class="diary-content">{content}</p>
+            {f'<div class="entry-tag-row">{tag_html}</div>' if tag_html else ''}
             {extras_html}
         </div>'''
 
@@ -216,6 +281,7 @@ def render():
 <p class="stats">共 {len(cats_info)} 只猫 · {len(entries)} 条匹配记录</p>
 {"<h2>🐈 猫咪们</h2><div class='cat-grid'>" + profiles_html + "</div>" if profiles_html else ""}
 <h2>📊 健康概览</h2><div class="stats-grid">{stats_html}</div>
+{add_form_html}
 {filters_html}
 {calendar_html}
 {trend_html}

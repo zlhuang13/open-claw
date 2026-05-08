@@ -80,6 +80,18 @@ li { margin: 2px 0; }
 .calendar-more { font-size: 11px; color: #888; }
 .trend-list { display: grid; gap: 8px; margin-bottom: 16px; }
 .trend-item { display: flex; justify-content: space-between; background: white; border-radius: 12px; padding: 12px 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.entry-form { background: white; border-radius: 14px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 18px; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.form-grid label { display: grid; gap: 6px; font-size: 13px; color: #555; }
+.form-grid label.wide { grid-column: 1 / -1; }
+.form-grid input, .form-grid select, .form-grid textarea { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #ddd; font-size: 14px; background: #fff; }
+.pill-group { display: flex; flex-wrap: wrap; gap: 8px; }
+.check-pill { display: inline-flex; align-items: center; gap: 6px; background: #f6f6f6; border-radius: 999px; padding: 8px 10px; font-size: 13px; }
+.submit-btn { margin-top: 12px; padding: 10px 16px; border: none; border-radius: 10px; background: #1a1a2e; color: white; font-size: 14px; }
+.save-ok { margin-left: 10px; color: #2d7; font-size: 13px; }
+.entry-tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.entry-tag { background: #e8f0ff; color: #345; padding: 4px 8px; border-radius: 999px; font-size: 12px; }
+@media (max-width: 720px) { .form-grid { grid-template-columns: 1fr; } .calendar-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); } .calendar-cell { min-height: 72px; padding: 6px; } .calendar-item { font-size: 10px; } }
 
 /* Plant photos */
 .plant-photo { width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 12px; }
