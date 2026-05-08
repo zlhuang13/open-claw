@@ -114,7 +114,6 @@ def _calendar_grid(entries, month_filter):
             visible_entries = [e for e in day_map.get(day, []) if '体重' not in (e.get('tags') or [])]
             items = ''.join(
                 f'<div class="calendar-item {("cat-moscar" if "Moscar" in e.get("cats", []) else "cat-nomi")}">' \
-                f'<span class="calendar-cat">{"Moscar" if "Moscar" in e.get("cats", []) else "Nomi"}</span>' \
                 f'<span class="calendar-note">{html.escape((e.get("tags") or [e.get("content") or "记录"])[0])}</span></div>'
                 for e in visible_entries[:3]
             )
@@ -223,7 +222,24 @@ def render():
         name = html.escape(info.get('display_name') or info.get('name') or '')
         emoji = html.escape(info.get('emoji') or '🐱')
         breed = html.escape(info.get('breed') or '')
-        birthday = html.escape(info.get('birthday') or '')
+        birthday_raw = info.get('birthday') or ''
+        birthday = html.escape(birthday_raw)
+        age_text = ''
+        if birthday_raw:
+            try:
+                bday = pd.to_datetime(birthday_raw)
+                now = pd.Timestamp.now()
+                age_months = max((now.year - bday.year) * 12 + (now.month - bday.month) - (1 if now.day < bday.day else 0), 0)
+                years = age_months // 12
+                rem_months = age_months % 12
+                if years > 0 and rem_months > 0:
+                    age_text = f'{years}岁{rem_months}个月'
+                elif years > 0:
+                    age_text = f'{years}岁'
+                else:
+                    age_text = f'{rem_months}个月'
+            except Exception:
+                age_text = ''
         photo = info.get('photo') or ''
         avatar_html = f'<img class="cat-photo" src="/cat-photos/{html.escape(photo)}" alt="{name}" loading="lazy">' if photo else f'<div class="cat-avatar">{emoji}</div>'
         profiles_html += f'''<div class="cat-profile">
@@ -231,6 +247,7 @@ def render():
             <h3>{name}</h3>
             <p>{breed}</p>
             <p class="cat-detail">{birthday}</p>
+            {f'<p class="cat-detail">{html.escape(age_text)}</p>' if age_text else ''}
         </div>'''
 
     symptom_counter = Counter()
@@ -248,7 +265,6 @@ def render():
     stat_cards = [
         ('Moscar', str(sum(1 for e in non_weight_entries if 'Moscar' in e.get('cats', [])))),
         ('Nomi', str(sum(1 for e in non_weight_entries if 'Nomi（糯米）' in e.get('cats', [])))),
-        ('常见标签', '、'.join(f'{k} {v}次' for k, v in symptom_counter.most_common(6) if k != '体重') or '暂无'),
     ]
     stats_html = ''.join(f'<div class="stat-card"><div class="stat-label">{html.escape(k)}</div><div class="stat-value">{html.escape(v)}</div></div>' for k, v in stat_cards)
 
@@ -300,14 +316,36 @@ def render():
 </details>'''
 
     chart_html = ''
-    if weight_entries:
+    chart_weight_entries = weight_entries
+    if params['q']:
+        chart_weight_entries = [e for e in chart_weight_entries if params['q'] in ' '.join((e.get('tags') or []) + [e.get('content') or '', e.get('notes') or '', str(e.get('weight') or '')])]
+    if chart_weight_entries:
         selected_range = params.get('range') or 'all'
-        range_links = ' '.join(
-            f'<a class="range-chip {"active" if selected_range == key else ""}" href="/cats?cat={html.escape(params["cat"])}&month={html.escape(params["month"])}&q={html.escape(params["q"])}&range={key}">{label}</a>'
-            for key, label in [('3m', '最近3个月'), ('1y', '最近1年'), ('all', '全部')]
-        )
+        range_links = '<div class="range-chip-row" data-cat="' + html.escape(params["cat"]) + '" data-month="' + html.escape(params["month"]) + '" data-q="' + html.escape(params["q"]) + '">' + ' '.join(
+                f'<button class="range-chip {"active" if selected_range == key else ""}" type="button" data-range="{key}">{label}</button>'
+                for key, label in [('3m', '最近3个月'), ('1y', '最近1年'), ('all', '全部')]
+            ) + '</div>'
         chart_src = f'/cats/weight-chart.png?cat={html.escape(params["cat"])}&month={html.escape(params["month"])}&q={html.escape(params["q"])}&range={html.escape(selected_range)}&v={html.escape(params["month"])}-{html.escape(params["cat"])}-{html.escape(params["q"])}-{html.escape(selected_range)}'
-        chart_html = '<h2>⚖️ 体重折线图</h2><div class="range-chip-row">' + range_links + f'</div><div class="weight-chart-card"><img class="weight-chart" src="{chart_src}" alt="体重折线图"></div>'
+        chart_script = '''<script>(function(){
+const row = document.querySelector('.range-chip-row');
+const img = document.getElementById('weight-chart-img');
+if (!row || !img) return;
+row.querySelectorAll('.range-chip').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    row.querySelectorAll('.range-chip').forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+    const p = new URLSearchParams({
+      cat: row.dataset.cat || '',
+      month: row.dataset.month || '',
+      q: row.dataset.q || '',
+      range: btn.dataset.range || 'all',
+      v: Date.now().toString(),
+    });
+    img.src = '/cats/weight-chart.png?' + p.toString();
+  });
+});
+})();</script>'''
+        chart_html = '<h2>⚖️ 体重折线图</h2>' + range_links + f'<div class="weight-chart-card"><img id="weight-chart-img" class="weight-chart" src="{chart_src}" alt="体重折线图"></div>' + chart_script
 
     entries_html = ''
     current_month = ''
@@ -340,7 +378,7 @@ def render():
             {extras_html}
         </div>'''
 
-    calendar_html = _calendar_grid(entries, params['month'] or (months[0] if months else ''))
+    calendar_html = _calendar_grid(non_weight_entries, params['month'] or (months[0] if months else ''))
 
     return f'''<h1>🐱 Cat Diary</h1>
 <p class="stats">共 {len(cats_info)} 只猫 · {len(entries)} 条匹配记录</p>
