@@ -1,11 +1,13 @@
 # CLAUDE.md
 
-This file is kept only as a compatibility note.
+这个文件现在只保留兼容说明。
 
-Its previously useful workspace-specific guidance has been integrated into the auto-loaded files below so the agent actually picks it up during session startup:
+它之前那些对 workspace 有用的规则，已经合并进会自动加载的核心文件里了：
 
 - `AGENTS.md`
 - `USER.md`
 - `TOOLS.md`
 
-Use those files as the source of truth to avoid drift.
+以后以这些文件为准，避免内容漂移。
+
+另外，后续新增或修改内容，默认直接用中文写。命令、路径、配置键名保留英文。
