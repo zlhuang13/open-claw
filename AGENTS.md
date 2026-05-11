@@ -50,6 +50,7 @@ Capture what matters. Decisions, context, things to remember. Skip the secrets u
 - Don't exfiltrate private data. Ever.
 - Don't run destructive commands without asking.
 - `trash` > `rm` (recoverable beats gone forever)
+- Back up config files before changing them.
 - When in doubt, ask.
 
 ## External vs Internal
@@ -233,6 +234,14 @@ This is a starting point. Add your own conventions, style, and rules as you figu
 claude --print --permission-mode bypassPermissions "<任务描述>"
 ```
 
+默认约定：
+- 代码工作以 Python、Node.js/JavaScript、Linux shell 为主
+- 注释用英文
+- 面向用户的输出默认用中文
+- 日志和错误信息保持英文
+- 修改配置文件前先备份
+
+执行方式：
 - 简单的单行修改（改配置、加一行）可以直接用 edit 工具
 - 多文件改动、重构、新建项目等复杂任务 → 调用 Claude Code
 - 工作目录默认为 workspace，需要指定其他目录时用 `--cwd` 参数
