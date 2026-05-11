@@ -1,7 +1,8 @@
-"""Cats diary module - daily cat logs and memories."""
+"""Cats diary module, daily cat logs and memories."""
 import calendar
 import html
 import io
+import json
 import os
 import sqlite3
 from collections import Counter, defaultdict
@@ -44,6 +45,9 @@ def _params():
         'q': (parsed.get('q') or [''])[0],
         'ok': (parsed.get('ok') or [''])[0],
         'range': (parsed.get('range') or ['all'])[0],
+        'prefill_content': (parsed.get('prefill_content') or [''])[0],
+        'prefill_tag': (parsed.get('prefill_tag') or [''])[0],
+        'prefill_date': (parsed.get('prefill_date') or [''])[0],
     }
 
 
@@ -113,7 +117,7 @@ def _calendar_grid(entries, month_filter):
                 continue
             visible_entries = [e for e in day_map.get(day, []) if '体重' not in (e.get('tags') or [])]
             items = ''.join(
-                f'<div class="calendar-item {("cat-moscar" if "Moscar" in e.get("cats", []) else "cat-nomi")}">' \
+                f'<div class="calendar-item {("cat-moscar" if "Moscar" in e.get("cats", []) else "cat-nomi")}">'
                 f'<span class="calendar-note">{html.escape((e.get("tags") or [e.get("content") or "记录"])[0])}</span></div>'
                 for e in visible_entries[:3]
             )
@@ -162,7 +166,7 @@ def is_enabled():
 
 
 def nav():
-    return '<a href="/">🖤 Kuro</a><span class="sep">›</span><span>Cat Diary</span>'
+    return '<a href="/">🤍 UMI</a><span class="sep">›</span><span>Cat Diary</span>'
 
 
 def render_weight_chart(params=None):
@@ -208,83 +212,34 @@ def render_weight_chart(params=None):
     return buf.getvalue()
 
 
+def _build_state():
+    cats_info = _profiles()
+    entries = _load_entries('', '', '')
+    months = _all_months()
+    cat_names = [c.get('display_name') or c.get('name') for c in cats_info]
+    return {
+        'profiles': cats_info,
+        'entries': entries,
+        'months': months,
+        'cat_names': cat_names,
+    }
+
+
+def render_json():
+    state = _build_state()
+    state['params'] = _params()
+    return json.dumps(state, ensure_ascii=False).encode('utf-8')
+
+
 def render():
     if REQUEST_QUERY:
         _save_entry(REQUEST_QUERY)
     params = _params()
-    cats_info = _profiles()
-    entries = _load_entries(params['cat'], params['month'], params['q'])
-    months = _all_months()
-    cat_names = [c.get('display_name') or c.get('name') for c in cats_info]
+    state = _build_state()
+    state['params'] = params
+    initial_state = html.escape(json.dumps(state, ensure_ascii=False))
 
-    profiles_html = ''
-    for info in cats_info:
-        name = html.escape(info.get('display_name') or info.get('name') or '')
-        emoji = html.escape(info.get('emoji') or '🐱')
-        breed = html.escape(info.get('breed') or '')
-        birthday_raw = info.get('birthday') or ''
-        birthday = html.escape(birthday_raw)
-        age_text = ''
-        if birthday_raw:
-            try:
-                bday = pd.to_datetime(birthday_raw)
-                now = pd.Timestamp.now()
-                age_months = max((now.year - bday.year) * 12 + (now.month - bday.month) - (1 if now.day < bday.day else 0), 0)
-                years = age_months // 12
-                rem_months = age_months % 12
-                if years > 0 and rem_months > 0:
-                    age_text = f'{years}岁{rem_months}个月'
-                elif years > 0:
-                    age_text = f'{years}岁'
-                else:
-                    age_text = f'{rem_months}个月'
-            except Exception:
-                age_text = ''
-        photo = info.get('photo') or ''
-        avatar_html = f'<img class="cat-photo" src="/cat-photos/{html.escape(photo)}" alt="{name}" loading="lazy">' if photo else f'<div class="cat-avatar">{emoji}</div>'
-        profiles_html += f'''<div class="cat-profile">
-            {avatar_html}
-            <h3>{name}</h3>
-            <p>{breed}</p>
-            <p class="cat-detail">{birthday}</p>
-            {f'<p class="cat-detail">{html.escape(age_text)}</p>' if age_text else ''}
-        </div>'''
-
-    symptom_counter = Counter()
-    monthly_counter = Counter()
-    cat_counter = Counter()
-    for e in entries:
-        for tag in e.get('tags', []):
-            symptom_counter[tag] += 1
-        monthly_counter[(e.get('entry_date') or '')[:7]] += 1
-        for cat in e.get('cats', []):
-            cat_counter[cat] += 1
-
-    non_weight_entries = [e for e in entries if '体重' not in (e.get('tags') or [])]
-    weight_entries = [e for e in entries if '体重' in (e.get('tags') or []) and e.get('weight') not in (None, '')]
-    stat_cards = [
-        ('Moscar', str(sum(1 for e in non_weight_entries if 'Moscar' in e.get('cats', [])))),
-        ('Nomi', str(sum(1 for e in non_weight_entries if 'Nomi（糯米）' in e.get('cats', [])))),
-    ]
-    stats_html = ''.join(f'<div class="stat-card"><div class="stat-label">{html.escape(k)}</div><div class="stat-value">{html.escape(v)}</div></div>' for k, v in stat_cards)
-
-    cat_options = '<option value="">全部猫咪</option>' + ''.join(
-        f'<option value="{html.escape(name)}" {"selected" if params["cat"] == name else ""}>{html.escape(name)}</option>'
-        for name in cat_names
-    )
-    month_options = '<option value="">全部月份</option>' + ''.join(
-        f'<option value="{html.escape(m)}" {"selected" if params["month"] == m else ""}>{html.escape(m)}</option>'
-        for m in months
-    )
-    filters_html = f'''<h2>🔎 快速筛选</h2>
-<form class="filter-bar" method="get" action="/cats">
-    <select name="cat">{cat_options}</select>
-    <select name="month">{month_options}</select>
-    <input type="text" name="q" placeholder="搜症状、饮食、备注" value="{html.escape(params['q'])}">
-    <button type="submit">筛选</button>
-    <a class="filter-reset" href="/cats">重置</a>
-</form>'''
-
+    cat_names = state['cat_names']
     add_cat_checks = ''.join(
         f'<label class="check-pill"><input type="checkbox" name="cat" value="{html.escape(name)}"> <span>{html.escape(name)}</span></label>'
         for name in cat_names
@@ -293,21 +248,23 @@ def render():
         f'<label class="check-pill"><input type="checkbox" name="tag" value="{html.escape(tag)}"> <span>{html.escape(tag)}</span></label>'
         for tag in COMMON_TAGS
     )
-    add_form_html = f'''<details class="entry-panel" {"open" if params['ok'] == '1' else ''}>
+    today = pd.Timestamp.now().strftime('%Y-%m-%d')
+    add_form_html = f'''<details class="entry-panel" {'open' if params['ok'] == '1' else ''}>
     <summary>➕ 添加记录 {"<span class='save-ok'>已保存 ✅</span>" if params['ok'] == '1' else ''}</summary>
     <form class="entry-form" method="get" action="/cats">
         <input type="hidden" name="action" value="add">
         <input type="hidden" name="ok" value="1">
         <div class="form-grid">
-            <label><span>日期</span><input type="date" name="date" required></label>
+            <label><span>日期</span><input type="date" name="date" value="{html.escape(params['prefill_date'])}" required></label>
             <label><span>心情</span><select name="mood"><option value="">-</option><option value="happy">开心</option><option value="sleepy">困</option><option value="sick">不舒服</option><option value="playful">活泼</option><option value="naughty">淘气</option></select></label>
             <label class="wide"><span>猫咪</span><div class="pill-group">{add_cat_checks}</div></label>
-            <label class="wide"><span>记录内容</span><textarea name="content" rows="3" placeholder="比如：今天吐毛球，精神还可以" required></textarea></label>
+            <label class="wide"><span>记录内容</span><textarea name="content" rows="3" placeholder="比如：今天吐毛球，精神还可以" required>{html.escape(params['prefill_content'])}</textarea></label>
             <label><span>饮食</span><input type="text" name="food" placeholder="吃了什么"></label>
             <label><span>便便</span><input type="text" name="stool" placeholder="正常/软便/拉肚子"></label>
             <label><span>体重 kg</span><input type="number" name="weight" step="0.01" placeholder="4.25"></label>
             <label><span>用药</span><input type="text" name="medication" placeholder="药名"></label>
             <label class="wide"><span>症状标签</span><div class="pill-group">{tag_checks}</div></label>
+            {f'<input type="hidden" name="tag" value="{html.escape(params["prefill_tag"])}">' if params['prefill_tag'] else ''}
             <label class="wide"><span>补充标签</span><input type="text" name="extra_tags" placeholder="多个标签用逗号隔开"></label>
             <label class="wide"><span>备注</span><textarea name="notes" rows="2" placeholder="别的细节"></textarea></label>
         </div>
@@ -315,80 +272,287 @@ def render():
     </form>
 </details>'''
 
-    chart_html = ''
-    chart_weight_entries = weight_entries
-    if params['q']:
-        chart_weight_entries = [e for e in chart_weight_entries if params['q'] in ' '.join((e.get('tags') or []) + [e.get('content') or '', e.get('notes') or '', str(e.get('weight') or '')])]
-    if chart_weight_entries:
-        selected_range = params.get('range') or 'all'
-        range_links = '<div class="range-chip-row" data-cat="' + html.escape(params["cat"]) + '" data-month="' + html.escape(params["month"]) + '" data-q="' + html.escape(params["q"]) + '">' + ' '.join(
-                f'<button class="range-chip {"active" if selected_range == key else ""}" type="button" data-range="{key}">{label}</button>'
-                for key, label in [('3m', '最近3个月'), ('1y', '最近1年'), ('all', '全部')]
-            ) + '</div>'
-        chart_src = f'/cats/weight-chart.png?cat={html.escape(params["cat"])}&month={html.escape(params["month"])}&q={html.escape(params["q"])}&range={html.escape(selected_range)}&v={html.escape(params["month"])}-{html.escape(params["cat"])}-{html.escape(params["q"])}-{html.escape(selected_range)}'
-        chart_script = '''<script>(function(){
-const row = document.querySelector('.range-chip-row');
-const img = document.getElementById('weight-chart-img');
-if (!row || !img) return;
-row.querySelectorAll('.range-chip').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    row.querySelectorAll('.range-chip').forEach((b) => b.classList.remove('active'));
-    btn.classList.add('active');
-    const p = new URLSearchParams({
-      cat: row.dataset.cat || '',
-      month: row.dataset.month || '',
-      q: row.dataset.q || '',
-      range: btn.dataset.range || 'all',
-      v: Date.now().toString(),
-    });
-    img.src = '/cats/weight-chart.png?' + p.toString();
-  });
-});
-})();</script>'''
-        chart_html = '<h2>⚖️ 体重折线图</h2>' + range_links + f'<div class="weight-chart-card"><img id="weight-chart-img" class="weight-chart" src="{chart_src}" alt="体重折线图"></div>' + chart_script
-
-    entries_html = ''
-    current_month = ''
-    mood_map = {'happy': '😸', 'sleepy': '😴', 'sick': '🤒', 'playful': '😸', 'naughty': '😾'}
-    for e in non_weight_entries:
-        date = e.get('entry_date') or ''
-        month = date[:7] if len(date) >= 7 else ''
-        if month and month != current_month:
-            current_month = month
-            entries_html += f'<h3 class="month-header">{html.escape(month)}</h3>'
-        cat_tags = ''.join(f'<span class="cat-tag-diary">{html.escape(t)}</span>' for t in e.get('cats', []))
-        tag_html = ''.join(f'<span class="entry-tag">{html.escape(t)}</span>' for t in e.get('tags', []))
-        mood = e.get('mood') or ''
-        mood_icon = mood_map.get(mood, '')
-        content = html.escape(e.get('content') or '')
-        extras = []
-        for label, key in [('饮食', 'food'), ('便便', 'stool'), ('用药', 'medication'), ('备注', 'notes')]:
-            val = e.get(key)
-            if val not in (None, ''):
-                extras.append(f'<li><strong>{label}</strong> {html.escape(str(val))}</li>')
-        extras_html = f'<ul>{"".join(extras)}</ul>' if extras else ''
-        entries_html += f'''<div class="diary-entry">
-            <div class="diary-header">
-                <span class="diary-date">{html.escape(date)}</span>
-                {cat_tags}
-                {f'<span class="diary-mood">{mood_icon}</span>' if mood else ''}
-            </div>
-            <p class="diary-content">{content}</p>
-            {f'<div class="entry-tag-row">{tag_html}</div>' if tag_html else ''}
-            {extras_html}
-        </div>'''
-
-    calendar_html = _calendar_grid(non_weight_entries, params['month'] or (months[0] if months else ''))
-
     return f'''<h1>🐱 Cat Diary</h1>
-<p class="stats">共 {len(cats_info)} 只猫 · {len(entries)} 条匹配记录</p>
-{"<h2>🐈 猫咪们</h2><div class='cat-grid'>" + profiles_html + "</div>" if profiles_html else ""}
-<h2>📊 健康概览</h2><div class="stats-grid">{stats_html}</div>
-{add_form_html}
-{filters_html}
-{chart_html}
-{calendar_html}
-<h2>📝 日记</h2>
-<div class="diary-list">
-    {entries_html if entries_html else '<p class="empty">当前筛选下还没有记录～</p>'}
-</div>'''
+<div id="cats-app" data-initial-state="{initial_state}"></div>
+<div id="cats-add-form">{add_form_html}</div>
+<script>
+(function() {{
+const root = document.getElementById('cats-app');
+if (!root) return;
+const state = JSON.parse(root.dataset.initialState || '{{}}');
+const moodMap = {{happy: '😸', sleepy: '😴', sick: '🤒', playful: '😸', naughty: '😾'}};
+const quickActions = [
+  {{label: '吐毛球', content: '吐毛球', tag: '吐毛球'}},
+  {{label: '软便', content: '软便', tag: '软便'}},
+  {{label: '食欲差', content: '食欲差', tag: '食欲差'}},
+  {{label: '称重', content: '称重', tag: '体重'}},
+];
+
+function esc(value) {{
+  return String(value ?? '').replace(/[&<>"']/g, (ch) => ({{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}}[ch]));
+}}
+
+function formatAge(birthdayRaw) {{
+  if (!birthdayRaw) return '';
+  const bday = new Date(birthdayRaw);
+  if (Number.isNaN(bday.getTime())) return '';
+  const now = new Date();
+  let months = (now.getFullYear() - bday.getFullYear()) * 12 + (now.getMonth() - bday.getMonth());
+  if (now.getDate() < bday.getDate()) months -= 1;
+  months = Math.max(months, 0);
+  const years = Math.floor(months / 12);
+  const rem = months % 12;
+  if (years > 0 && rem > 0) return `${{years}}岁${{rem}}个月`;
+  if (years > 0) return `${{years}}岁`;
+  return `${{rem}}个月`;
+}}
+
+function currentParams() {{
+  return state.params || {{cat:'',month:'',q:'',range:'all'}};
+}}
+
+function filteredEntries() {{
+  const p = currentParams();
+  return (state.entries || []).filter((entry) => {{
+    if (p.cat && !(entry.cats || []).includes(p.cat)) return false;
+    if (p.month && !(entry.entry_date || '').startsWith(p.month)) return false;
+    if (p.q) {{
+      const blob = [entry.content, entry.symptom, entry.notes, entry.food, entry.stool, entry.medication, String(entry.weight || ''), ...(entry.tags || [])].join(' ');
+      if (!blob.includes(p.q)) return false;
+    }}
+    return true;
+  }});
+}}
+
+function nonWeightEntries(entries) {{
+  return entries.filter((entry) => !(entry.tags || []).includes('体重'));
+}}
+
+function weightEntries(entries) {{
+  return entries.filter((entry) => (entry.tags || []).includes('体重') && entry.weight !== null && entry.weight !== '');
+}}
+
+function updateUrl(extra = {{}}) {{
+  const p = currentParams();
+  const params = new URLSearchParams();
+  for (const key of ['cat', 'month', 'q', 'range', 'ok', 'prefill_content', 'prefill_tag', 'prefill_date']) {{
+    const value = extra[key] !== undefined ? extra[key] : p[key];
+    if (value) params.set(key, value);
+  }}
+  history.replaceState(null, '', '/cats' + (params.toString() ? '?' + params.toString() : ''));
+}}
+
+function profileHtml(info) {{
+  const catName = info.display_name || info.name || '';
+  const active = currentParams().cat === catName ? ' active' : '';
+  const avatar = info.photo
+    ? `<img class="cat-photo" src="/cat-photos/${{esc(info.photo)}}" alt="${{esc(catName)}}" loading="lazy">`
+    : `<div class="cat-avatar">${{esc(info.emoji || '🐱')}}</div>`;
+  const age = formatAge(info.birthday || '');
+  return `<button class="cat-profile-link" type="button" data-cat-profile="${{esc(catName)}}"><div class="cat-profile${{active}}">
+    ${{avatar}}
+    <h3>${{esc(catName)}}</h3>
+    <p>${{esc(info.breed || '')}}</p>
+    <p class="cat-detail">${{esc(info.birthday || '')}}</p>
+    ${{age ? `<p class="cat-detail">${{esc(age)}}</p>` : ''}}
+  </div></button>`;
+}}
+
+function statsHtml(entries) {{
+  const plain = nonWeightEntries(entries);
+  const weights = weightEntries(entries);
+  const latestWeights = new Map();
+  const alerts = [];
+  for (const cat of state.cat_names || []) {{
+    const points = weights
+      .filter((entry) => (entry.cats || []).includes(cat))
+      .map((entry) => [entry.entry_date || '', Number(entry.weight)])
+      .sort((a, b) => a[0].localeCompare(b[0]));
+    if (points.length) latestWeights.set(cat, `${{points[points.length - 1][1].toFixed(2)}} kg`);
+    if (points.length >= 2) {{
+      const delta = points[points.length - 1][1] - points[points.length - 2][1];
+      if (delta <= -0.15) alerts.push(`${{cat}} 最近一次下降 ${{Math.abs(delta).toFixed(2)}} kg`);
+    }}
+  }}
+  const cards = [
+    ['Moscar 记录', String(plain.filter((entry) => (entry.cats || []).includes('Moscar')).length)],
+    ['Nomi 记录', String(plain.filter((entry) => (entry.cats || []).includes('Nomi（糯米）')).length)],
+    ['最新体重', [...latestWeights.entries()].map(([k, v]) => `${{k}} ${{v}}`).join(' · ') || '暂无'],
+    ['异常提醒', alerts.join('；') || '暂无明显异常'],
+  ];
+  return `<h2>📊 健康概览</h2><div class="stats-grid">${{cards.map(([k, v]) => `<div class="stat-card"><div class="stat-label">${{esc(k)}}</div><div class="stat-value">${{esc(v)}}</div></div>`).join('')}}</div>`;
+}}
+
+function quickActionsHtml() {{
+  const p = currentParams();
+  const today = new Date().toISOString().slice(0, 10);
+  const buttons = quickActions.map((item) => `<button class="quick-action-btn" type="button" data-quick-content="${{esc(item.content)}}" data-quick-tag="${{esc(item.tag)}}" data-quick-date="${{today}}">${{esc(item.label)}}</button>`).join('');
+  return `<h2>⚡ 快速记录</h2><div class="pill-group quick-actions">${{buttons}}</div><p class="cat-detail">点按钮会自动填今天日期和常用内容，你补细节再保存。</p>`;
+}}
+
+function filterBarHtml() {{
+  const p = currentParams();
+  const catOptions = ['<option value="">全部猫咪</option>'].concat((state.cat_names || []).map((name) => `<option value="${{esc(name)}}" ${{p.cat === name ? 'selected' : ''}}>${{esc(name)}}</option>`)).join('');
+  const monthOptions = ['<option value="">全部月份</option>'].concat((state.months || []).map((month) => `<option value="${{esc(month)}}" ${{p.month === month ? 'selected' : ''}}>${{esc(month)}}</option>`)).join('');
+  return `<h2>🔎 快速筛选</h2>
+  <form class="filter-bar" id="cats-filter-form">
+    <select name="cat">${{catOptions}}</select>
+    <select name="month">${{monthOptions}}</select>
+    <input type="text" name="q" placeholder="搜症状、饮食、备注" value="${{esc(p.q || '')}}">
+    <button type="submit">筛选</button>
+    <button class="filter-reset" type="button" data-filter-reset>重置</button>
+  </form>`;
+}}
+
+function symptomHtml(entries) {{
+  const counter = new Map();
+  for (const entry of entries) {{
+    for (const tag of entry.tags || []) {{
+      if (tag === '体重') continue;
+      counter.set(tag, (counter.get(tag) || 0) + 1);
+    }}
+  }}
+  const top = [...counter.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+  if (!top.length) return '';
+  return '<h2>📈 症状统计</h2><div class="stats-grid">' + top.map(([tag, count]) => `<div class="stat-card"><div class="stat-label">${{esc(tag)}}</div><div class="stat-value">${{count}} 次</div></div>`).join('') + '</div>';
+}}
+
+function chartHtml(entries) {{
+  const weights = weightEntries(entries);
+  if (!weights.length) return '';
+  const p = currentParams();
+  const rangeButtons = [['3m', '最近3个月'], ['1y', '最近1年'], ['all', '全部']].map(([key, label]) => `<button class="range-chip ${{(p.range || 'all') === key ? 'active' : ''}}" type="button" data-range="${{key}}">${{label}}</button>`).join('');
+  const chartParams = new URLSearchParams({{cat: p.cat || '', month: p.month || '', q: p.q || '', range: p.range || 'all', v: Date.now().toString()}});
+  return `<h2>⚖️ 体重折线图</h2><div class="range-chip-row">${{rangeButtons}}</div><div class="weight-chart-card"><img id="weight-chart-img" class="weight-chart" src="/cats/weight-chart.png?${{chartParams.toString()}}" alt="体重折线图"></div>`;
+}}
+
+function calendarHtml(entries) {{
+  const p = currentParams();
+  const month = p.month || ((state.months || [])[0] || '');
+  if (!month) return '';
+  const parts = month.split('-');
+  if (parts.length !== 2) return '';
+  const year = Number(parts[0]);
+  const monthIndex = Number(parts[1]);
+  if (!year || !monthIndex) return '';
+  const first = new Date(year, monthIndex - 1, 1);
+  const lastDay = new Date(year, monthIndex, 0).getDate();
+  const jsStart = (first.getDay() + 6) % 7;
+  const dayMap = new Map();
+  for (const entry of entries) {{
+    if ((entry.entry_date || '').startsWith(month)) {{
+      const day = Number((entry.entry_date || '').slice(-2));
+      if (!dayMap.has(day)) dayMap.set(day, []);
+      dayMap.get(day).push(entry);
+    }}
+  }}
+  const header = ['一','二','三','四','五','六','日'].map((d) => `<div class="calendar-head">${{d}}</div>`).join('');
+  const cells = [];
+  for (let i = 0; i < jsStart; i++) cells.push('<div class="calendar-cell empty-cell"></div>');
+  for (let day = 1; day <= lastDay; day++) {{
+    const items = (dayMap.get(day) || []).slice(0, 3).map((entry) => `<div class="calendar-item ${{(entry.cats || []).includes('Moscar') ? 'cat-moscar' : 'cat-nomi'}}"><span class="calendar-note">${{esc(((entry.tags || [])[0] || entry.content || '记录'))}}</span></div>`).join('');
+    const moreCount = Math.max((dayMap.get(day) || []).length - 3, 0);
+    cells.push(`<div class="calendar-cell"><div class="calendar-day">${{day}}</div>${{items}}${{moreCount ? `<div class="calendar-more">+${{moreCount}} 条</div>` : ''}}</div>`);
+  }}
+  return `<h2>🗓️ 月历视图</h2><div class="calendar-grid">${{header}}${{cells.join('')}}</div>`;
+}}
+
+function diaryHtml(entries) {{
+  const plain = nonWeightEntries(entries);
+  if (!plain.length) return '<h2>📝 日记</h2><div class="diary-list"><p class="empty">当前筛选下还没有记录～</p></div>';
+  let currentMonth = '';
+  const rows = [];
+  for (const entry of plain) {{
+    const date = entry.entry_date || '';
+    const month = date.slice(0, 7);
+    if (month && month !== currentMonth) {{
+      currentMonth = month;
+      rows.push(`<h3 class="month-header">${{esc(month)}}</h3>`);
+    }}
+    const catTags = (entry.cats || []).map((cat) => `<span class="cat-tag-diary">${{esc(cat)}}</span>`).join('');
+    const tags = (entry.tags || []).map((tag) => `<span class="entry-tag">${{esc(tag)}}</span>`).join('');
+    const extras = [['饮食', 'food'], ['便便', 'stool'], ['用药', 'medication'], ['备注', 'notes']]
+      .map(([label, key]) => entry[key] ? `<li><strong>${{label}}</strong> ${{esc(entry[key])}}</li>` : '')
+      .join('');
+    rows.push(`<div class="diary-entry"><div class="diary-header"><span class="diary-date">${{esc(date)}}</span>${{catTags}}${{entry.mood ? `<span class="diary-mood">${{moodMap[entry.mood] || ''}}</span>` : ''}}</div><p class="diary-content">${{esc(entry.content || '')}}</p>${{tags ? `<div class="entry-tag-row">${{tags}}</div>` : ''}}${{extras ? `<ul>${{extras}}</ul>` : ''}}</div>`);
+  }}
+  return '<h2>📝 日记</h2><div class="diary-list">' + rows.join('') + '</div>';
+}}
+
+function render() {{
+  const entries = filteredEntries();
+  root.innerHTML = `<p class="stats">共 ${{(state.profiles || []).length}} 只猫 · ${{entries.length}} 条匹配记录</p>
+    ${{state.profiles && state.profiles.length ? `<h2>🐈 猫咪们</h2><div class="cat-grid">${{state.profiles.map(profileHtml).join('')}}</div>` : ''}}
+    ${{statsHtml(entries)}}
+    ${{quickActionsHtml()}}
+    ${{filterBarHtml()}}
+    ${{symptomHtml(entries)}}
+    ${{chartHtml(entries)}}
+    ${{calendarHtml(nonWeightEntries(entries))}}
+    ${{diaryHtml(entries)}}`;
+}}
+
+root.addEventListener('click', (event) => {{
+  const profile = event.target.closest('[data-cat-profile]');
+  if (profile) {{
+    const cat = profile.dataset.catProfile || '';
+    state.params.cat = state.params.cat === cat ? '' : cat;
+    updateUrl();
+    render();
+    return;
+  }}
+  const range = event.target.closest('[data-range]');
+  if (range) {{
+    state.params.range = range.dataset.range || 'all';
+    updateUrl();
+    render();
+    return;
+  }}
+  const quick = event.target.closest('[data-quick-content]');
+  if (quick) {{
+    const params = currentParams();
+    const url = new URL('/cats', window.location.origin);
+    if (params.cat) url.searchParams.set('cat', params.cat);
+    url.searchParams.set('ok', '1');
+    url.searchParams.set('prefill_date', quick.dataset.quickDate || '');
+    url.searchParams.set('prefill_content', quick.dataset.quickContent || '');
+    url.searchParams.set('prefill_tag', quick.dataset.quickTag || '');
+    window.location.href = url.pathname + '?' + url.searchParams.toString();
+    return;
+  }}
+  if (event.target.closest('[data-filter-reset]')) {{
+    state.params.cat = '';
+    state.params.month = '';
+    state.params.q = '';
+    state.params.range = 'all';
+    updateUrl();
+    render();
+  }}
+}});
+
+root.addEventListener('submit', (event) => {{
+  const form = event.target.closest('#cats-filter-form');
+  if (!form) return;
+  event.preventDefault();
+  const data = new FormData(form);
+  state.params.cat = String(data.get('cat') || '');
+  state.params.month = String(data.get('month') || '');
+  state.params.q = String(data.get('q') || '');
+  updateUrl();
+  render();
+}});
+
+root.addEventListener('change', (event) => {{
+  const form = event.target.closest('#cats-filter-form');
+  if (!form) return;
+  const data = new FormData(form);
+  state.params.cat = String(data.get('cat') || '');
+  state.params.month = String(data.get('month') || '');
+  state.params.q = String(data.get('q') || '');
+  updateUrl();
+  render();
+}});
+
+render();
+}})();
+</script>'''

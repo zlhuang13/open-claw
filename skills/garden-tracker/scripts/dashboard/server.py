@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Kuro Dashboard - modular server."""
+"""UMI Dashboard - modular server."""
 import http.server
 import os
 
@@ -51,9 +51,9 @@ def index_html():
                 <p>{m.DESCRIPTION}</p>
                 <span class="badge">Coming Soon</span>
             </div>'''
-    nav_html = '<span>🖤 Kuro Dashboard</span>'
-    return wrap('🖤 Kuro Dashboard', nav_html,
-                f'<h1>🖤 Kuro</h1><p class="subtitle">Home AI Assistant</p><div class="module-grid">{cards}</div>')
+    nav_html = '<span>🤍 UMI Dashboard</span>'
+    return wrap('🤍 UMI Dashboard', nav_html,
+                f'<h1>🤍 UMI</h1><p class="subtitle">Home Butler Dashboard</p><div class="module-grid">{cards}</div>')
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -85,6 +85,28 @@ class Handler(http.server.BaseHTTPRequestHandler):
             ct = {'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png', 'gif': 'image/gif', 'webp': 'image/webp'}.get(ext.lstrip('.'), 'application/octet-stream')
             with open(fpath, 'rb') as f:
                 data = f.read()
+        elif path == '/cats/weight-chart.png':
+            m = route_map.get('/cats')
+            if not m:
+                self.send_error(404)
+                return
+            if hasattr(m, 'set_request_query'):
+                m.set_request_query(self.path.split('?', 1)[1] if '?' in self.path else '')
+            data = m.render_weight_chart()
+            if not data:
+                self.send_error(404)
+                return
+            ct = 'image/png'
+        elif path.startswith('/api/'):
+            module_route = '/' + path[len('/api/'):]
+            m = route_map.get(module_route)
+            if not m or not hasattr(m, 'render_json'):
+                self.send_error(404)
+                return
+            if hasattr(m, 'set_request_query'):
+                m.set_request_query(self.path.split('?', 1)[1] if '?' in self.path else '')
+            data = m.render_json()
+            ct = 'application/json'
         elif path in route_map:
             m = route_map[path]
             if hasattr(m, 'set_request_query'):
@@ -96,7 +118,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
             ct = 'text/html'
 
         self.send_response(200)
-        self.send_header('Content-Type', f'{ct}; charset=utf-8')
+        if ct.startswith('text/'):
+            self.send_header('Content-Type', f'{ct}; charset=utf-8')
+        else:
+            self.send_header('Content-Type', ct)
+        self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+        self.send_header('Pragma', 'no-cache')
+        self.send_header('Expires', '0')
         self.send_header('Content-Length', len(data))
         self.end_headers()
         self.wfile.write(data)
@@ -106,6 +134,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 
 if __name__ == '__main__':
-    print(f'🖤 Kuro Dashboard on http://{BIND}/')
+    print(f'🤍 UMI Dashboard on http://{BIND}/')
     print(f'   Modules: {", ".join(m.ROUTE for m in modules)}')
     http.server.HTTPServer((BIND, PORT), Handler).serve_forever()
