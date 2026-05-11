@@ -54,7 +54,7 @@ Skill 是可共享的，你的环境不是。把这些内容分开，更新 skil
 
 ### Dashboard（Garden DB）
 
-- Service：`kuro-dashboard.service`（systemd，enabled）
+- Service：`umi-dashboard.service`（systemd，enabled）
 - Port：80，bind：`100.86.143.43`（仅 Tailscale）
 - URL：`http://kuro-app.tail4dc7fc.ts.net/`
 - Path：`/home/ubuntu/.openclaw/workspace/skills/garden-tracker/scripts/dashboard/`
