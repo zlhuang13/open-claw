@@ -53,7 +53,7 @@ def index_html():
             </div>'''
     nav_html = '<span>🩵 UMI Dashboard</span>'
     return wrap('🩵 UMI Dashboard', nav_html,
-                f'<h1>🩵 UMI</h1><p class="subtitle">Home Butler Dashboard</p><div class="module-grid">{cards}</div>')
+                f'<h1>🩵 UMI</h1><div class="module-grid">{cards}</div>')
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
