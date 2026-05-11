@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """UMI Dashboard - modular server."""
 import http.server
+import json
 import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -122,6 +123,30 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_header('Content-Type', f'{ct}; charset=utf-8')
         else:
             self.send_header('Content-Type', ct)
+        self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+        self.send_header('Pragma', 'no-cache')
+        self.send_header('Expires', '0')
+        self.send_header('Content-Length', len(data))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def do_POST(self):
+        path = self.path.split('?')[0]
+        m = route_map.get(path)
+        if not m:
+            m = next((module for route, module in route_map.items() if path.startswith(route + '/')), None)
+        if not m or not hasattr(m, 'handle_post'):
+            self.send_error(404)
+            return
+        if hasattr(m, 'set_request_query'):
+            m.set_request_query(self.path.split('?', 1)[1] if '?' in self.path else '')
+        result = m.handle_post(path)
+        if result is None:
+            self.send_error(404)
+            return
+        data = result if isinstance(result, bytes) else str.encode(json.dumps(result, ensure_ascii=False))
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
         self.send_header('Pragma', 'no-cache')
         self.send_header('Expires', '0')

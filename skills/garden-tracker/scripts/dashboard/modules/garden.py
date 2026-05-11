@@ -16,6 +16,7 @@ DESCRIPTION = '花园植物管理 · 养护记录 · 健康追踪'
 DB_PATH = '/home/ubuntu/.openclaw/workspace/skills/garden-tracker/data/garden.db'
 INFO_PATH = '/home/ubuntu/.openclaw/workspace/skills/garden-tracker/data/garden_info.json'
 PHOTOS_DIR = '/home/ubuntu/.openclaw/workspace/skills/garden-tracker/photos'
+DISMISSED_TODOS_PATH = '/home/ubuntu/.openclaw/workspace/skills/garden-tracker/data/dismissed_todos.json'
 REQUEST_QUERY = ''
 
 
@@ -51,6 +52,9 @@ def _build_todos(plants, care, obs):
         by_plant_obs[o['plant_id']].append(o)
 
     today = datetime.utcnow().date()
+    current_week = today.isocalendar()
+    current_prefix = f'{current_week.year}W{current_week.week:02d}'
+    dismissed = _load_dismissed_todos(current_prefix)
     todos = []
     for p in plants:
         pid = p['id']
@@ -66,28 +70,70 @@ def _build_todos(plants, care, obs):
             try:
                 lw = datetime.strptime(last_water['date'], '%Y-%m-%d').date()
                 if (today - lw).days >= 7:
-                    todos.append((1, f'💧 {name} 距上次浇水已 {(today - lw).days} 天'))
+                    todos.append((1, {'key': f'{current_prefix}_water_{pid}', 'text': f'💧 {name} 距上次浇水已 {(today - lw).days} 天'}))
             except Exception:
                 pass
         if last_fertilize and last_fertilize.get('date'):
             try:
                 lf = datetime.strptime(last_fertilize['date'], '%Y-%m-%d').date()
                 if (today - lf).days >= 30:
-                    todos.append((2, f'🧪 {name} 可考虑补肥（距上次 {(today - lf).days} 天）'))
+                    todos.append((2, {'key': f'{current_prefix}_fertilize_{pid}', 'text': f'🧪 {name} 可考虑补肥（距上次 {(today - lf).days} 天）'}))
             except Exception:
                 pass
         if p.get('status') in ('stressed', 'sick'):
-            todos.append((0, f'⚠️ {name} 当前状态 {p.get("status")}，建议尽快复查'))
+            todos.append((0, {'key': f'{current_prefix}_review_{pid}', 'text': f'⚠️ {name} 当前状态 {p.get("status")}，建议尽快复查'}))
         if last_obs and last_obs.get('date'):
             try:
                 lo = datetime.strptime(last_obs['date'], '%Y-%m-%d').date()
                 if (today - lo).days >= 21:
-                    todos.append((3, f'👀 {name} 已 {(today - lo).days} 天没新观察记录'))
+                    todos.append((3, {'key': f'{current_prefix}_observe_{pid}', 'text': f'👀 {name} 已 {(today - lo).days} 天没新观察记录'}))
             except Exception:
                 pass
         if pid in ('P003', 'P006') and today.month in (5, 6) and not last_prune:
-            todos.append((1, f'✂️ {name} 花后修剪窗口到了'))
-    return [t[1] for t in sorted(todos, key=lambda x: x[0])[:8]]
+            todos.append((1, {'key': f'{current_prefix}_prune_{pid}', 'text': f'✂️ {name} 花后修剪窗口到了'}))
+    return [item for _, item in sorted(todos, key=lambda x: x[0]) if item['key'] not in dismissed][:8]
+
+
+def _load_dismissed_todos(current_prefix=None):
+    if not current_prefix:
+        week = datetime.utcnow().date().isocalendar()
+        current_prefix = f'{week.year}W{week.week:02d}'
+    try:
+        with open(DISMISSED_TODOS_PATH, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except Exception:
+        data = {'dismissed': []}
+
+    dismissed = data.get('dismissed', [])
+    if not isinstance(dismissed, list):
+        dismissed = []
+    filtered = [key for key in dismissed if isinstance(key, str) and key.startswith(f'{current_prefix}_')]
+    if filtered != dismissed:
+        _write_dismissed_todos(filtered)
+    return set(filtered)
+
+
+def _write_dismissed_todos(keys):
+    os.makedirs(os.path.dirname(DISMISSED_TODOS_PATH), exist_ok=True)
+    with open(DISMISSED_TODOS_PATH, 'w', encoding='utf-8') as f:
+        json.dump({'dismissed': sorted(set(keys))}, f, ensure_ascii=False, indent=2)
+
+
+def dismiss_todo(key):
+    key = (key or '').strip()
+    if not key:
+        return {'ok': False, 'error': 'missing key'}
+    dismissed = _load_dismissed_todos()
+    dismissed.add(key)
+    _write_dismissed_todos(dismissed)
+    return {'ok': True}
+
+
+def handle_post(path):
+    if path != '/garden/dismiss-todo':
+        return None
+    parsed = parse_qs(REQUEST_QUERY, keep_blank_values=False)
+    return dismiss_todo((parsed.get('key') or [''])[0])
 
 
 def _status_meta():
@@ -336,7 +382,7 @@ function renderQuickActions() {{
 function render() {{
   const summary = state.summary || {{}};
   const todos = (state.todos || []).length
-    ? '<h2>🪴 本周待办</h2><div class="stats-grid">' + state.todos.map((item) => `<div class="stat-card"><div class="stat-value">${{esc(item)}}</div></div>`).join('') + '</div>'
+    ? '<h2>🪴 本周待办</h2><div class="stats-grid">' + state.todos.map((item) => `<div class="stat-card todo-card" data-todo-key="${{esc(item.key)}}"><button class="todo-dismiss-btn" type="button" data-dismiss-todo="${{esc(item.key)}}" aria-label="忽略这条待办">✕</button><div class="stat-value">${{esc(item.text)}}</div></div>`).join('') + '</div>'
     : '<h2>🪴 本周待办</h2><p class="empty">目前没有明显待办 🎉</p>';
   const zoneText = state.params.zone ? `<p class="cat-detail">当前筛选：${{esc(state.params.zone)}}区</p>` : '';
   root.innerHTML = `<h1>🌱 Jerry's Garden</h1>
@@ -349,6 +395,23 @@ ${{renderQuickActions()}}
 }}
 
 root.addEventListener('click', async (event) => {{
+  const dismissButton = event.target.closest('[data-dismiss-todo]');
+  if (dismissButton) {{
+    const key = dismissButton.dataset.dismissTodo || '';
+    if (!key) return;
+    const resp = await fetch('/garden/dismiss-todo?key=' + encodeURIComponent(key), {{ method: 'POST' }});
+    const result = await resp.json();
+    if (result.ok) {{
+      state.todos = (state.todos || []).filter((item) => item.key !== key);
+      const card = dismissButton.closest('[data-todo-key]');
+      if (card) card.remove();
+      const grid = root.querySelector('.stats-grid');
+      if (grid && !grid.children.length) {{
+        render();
+      }}
+    }}
+    return;
+  }}
   const zoneButton = event.target.closest('[data-zone]');
   if (zoneButton) {{
     const nextZone = zoneButton.dataset.zone || '';
