@@ -166,7 +166,7 @@ def is_enabled():
 
 
 def nav():
-    return '<a href="/">🤍 UMI</a><span class="sep">›</span><span>Cat Diary</span>'
+    return '<a href="/">🩵 UMI</a><span class="sep">›</span><span>Cat Diary</span>'
 
 
 def render_weight_chart(params=None):

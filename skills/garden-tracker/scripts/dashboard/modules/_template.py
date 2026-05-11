@@ -17,7 +17,7 @@ def is_enabled():
 
 def nav():
     """Breadcrumb nav HTML for the topbar."""
-    return '<a href="/">🤍 UMI</a><span class="sep">›</span><span>Example</span>'
+    return '<a href="/">🩵 UMI</a><span class="sep">›</span><span>Example</span>'
 
 
 def render():

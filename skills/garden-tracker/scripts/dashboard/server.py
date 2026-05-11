@@ -51,9 +51,9 @@ def index_html():
                 <p>{m.DESCRIPTION}</p>
                 <span class="badge">Coming Soon</span>
             </div>'''
-    nav_html = '<span>🤍 UMI Dashboard</span>'
-    return wrap('🤍 UMI Dashboard', nav_html,
-                f'<h1>🤍 UMI</h1><p class="subtitle">Home Butler Dashboard</p><div class="module-grid">{cards}</div>')
+    nav_html = '<span>🩵 UMI Dashboard</span>'
+    return wrap('🩵 UMI Dashboard', nav_html,
+                f'<h1>🩵 UMI</h1><p class="subtitle">Home Butler Dashboard</p><div class="module-grid">{cards}</div>')
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -134,6 +134,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 
 if __name__ == '__main__':
-    print(f'🤍 UMI Dashboard on http://{BIND}/')
+    print(f'🩵 UMI Dashboard on http://{BIND}/')
     print(f'   Modules: {", ".join(m.ROUTE for m in modules)}')
     http.server.HTTPServer((BIND, PORT), Handler).serve_forever()

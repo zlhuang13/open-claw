@@ -39,7 +39,7 @@ def is_enabled():
 
 
 def nav():
-    return '<a href="/">🤍 UMI</a><span class="sep">›</span><span>Garden DB</span>'
+    return '<a href="/">🩵 UMI</a><span class="sep">›</span><span>Garden DB</span>'
 
 
 def _build_todos(plants, care, obs):

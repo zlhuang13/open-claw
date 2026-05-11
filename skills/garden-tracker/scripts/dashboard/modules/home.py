@@ -16,7 +16,7 @@ def is_enabled():
 
 
 def nav():
-    return '<a href="/">🤍 UMI</a><span class="sep">›</span><span>Home</span>'
+    return '<a href="/">🩵 UMI</a><span class="sep">›</span><span>Home</span>'
 
 
 def render():
