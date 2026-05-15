@@ -53,8 +53,31 @@ li { margin: 2px 0; }
 
 /* Home */
 .home-card { background: var(--surface); border-radius: 12px; padding: 20px; box-shadow: var(--shadow); border: 1px solid var(--line); }
+.home-subgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.home-subcard h3 { font-size: 18px; color: #4f6f9d; margin-bottom: 10px; }
+.home-subcard.soft { background: var(--surface-soft); }
+.subcard-kicker { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 8px; }
 .bin-info { font-size: 15px; line-height: 1.8; }
 .hint { font-size: 13px; color: var(--muted); margin-top: 12px; }
+
+/* Inventory */
+.inventory-summary-grid { max-width: 520px; margin: 0 auto 18px; }
+.inventory-form-grid textarea { resize: vertical; min-height: 88px; }
+.inventory-zone-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.inventory-zone-card { background: var(--surface); border-radius: 14px; padding: 16px; box-shadow: var(--shadow); border: 1px solid var(--line); }
+.inventory-zone-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.inventory-zone-head h3 { font-size: 17px; color: #4f6f9d; }
+.inventory-count { font-size: 12px; color: var(--muted); background: var(--surface-soft); border-radius: 999px; padding: 4px 8px; }
+.inventory-zone-body { display: grid; gap: 10px; }
+.inventory-zone-body ul { list-style: none; padding-left: 0; }
+.inventory-item { background: #f9fbff; border: 1px solid #e4efff; border-radius: 12px; padding: 12px; margin: 0; }
+.inventory-item-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+.inventory-pill { display: inline-flex; align-items: center; background: var(--surface-soft); color: #5576a5; border-radius: 999px; padding: 3px 8px; font-size: 12px; }
+.inventory-meta, .inventory-notes { font-size: 13px; color: var(--muted); line-height: 1.6; }
+.inventory-notes { margin-top: 4px; }
+.inventory-status { display: inline-block; margin-left: 10px; font-size: 13px; }
+.inventory-status.ok { color: #5aa57e; }
+.inventory-status.error { color: #c35b5b; }
 
 /* Generic content card */
 .content-card { background: var(--surface); border-radius: 12px; padding: 16px; box-shadow: var(--shadow); border: 1px solid var(--line); }
@@ -92,6 +115,8 @@ li { margin: 2px 0; }
 .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-bottom: 16px; }
 .calendar-head { font-size: 12px; color: var(--muted); text-align: center; }
 .calendar-cell { background: var(--surface); min-height: 92px; border-radius: 12px; padding: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid var(--line); }
+.calendar-button { width: 100%; border: none; text-align: left; cursor: pointer; }
+.calendar-button.selected-day { outline: 2px solid var(--primary-strong); }
 .empty-cell { background: transparent; box-shadow: none; border: none; }
 .calendar-day { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
 .calendar-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #444; margin-bottom: 4px; line-height: 1.35; padding: 4px 6px; border-radius: 8px; }
