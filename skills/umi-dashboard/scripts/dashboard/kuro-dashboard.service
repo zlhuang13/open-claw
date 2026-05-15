@@ -1,0 +1,13 @@
+[Unit]
+Description=UMI Dashboard
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /home/ubuntu/.openclaw/workspace/skills/umi-dashboard/scripts/dashboard/server.py
+WorkingDirectory=/home/ubuntu/.openclaw/workspace/skills/umi-dashboard/scripts/dashboard
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
