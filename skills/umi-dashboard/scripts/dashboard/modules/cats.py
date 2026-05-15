@@ -25,11 +25,10 @@ TITLE = '🐱 Cat Diary'
 ICON = '🐱'
 DESCRIPTION = '猫猫日记 · 日常记录'
 
-from common import DATA_DIR
+from common import CATS_DIARY_DB_PATH, CATS_PROFILES_DB_PATH
 
-DATA_DIR = str(DATA_DIR)
-PROFILES_DB = os.path.join(DATA_DIR, 'cats_profiles.db')
-DIARY_DB = os.path.join(DATA_DIR, 'cats_diary.db')
+PROFILES_DB = str(CATS_PROFILES_DB_PATH)
+DIARY_DB = str(CATS_DIARY_DB_PATH)
 REQUEST_QUERY = ''
 COMMON_TAGS = ['呕吐', '吐毛球', '拉肚子', '软便', '食欲差', '没精神', '打喷嚏', '咳嗽', '吃药', '看医生']
 

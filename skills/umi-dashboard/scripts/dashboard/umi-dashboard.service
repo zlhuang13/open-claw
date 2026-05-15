@@ -1,6 +1,3 @@
-# Compatibility note: use umi-dashboard.service for new installs.
-# This legacy-named sample intentionally points at the standalone UMI dashboard.
-
 [Unit]
 Description=UMI Dashboard
 After=network.target

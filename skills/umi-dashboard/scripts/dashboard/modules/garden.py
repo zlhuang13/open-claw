@@ -13,12 +13,12 @@ TITLE = '🌱 Garden DB'
 ICON = '🌱'
 DESCRIPTION = '花园植物管理 · 养护记录 · 健康追踪'
 
-from common import DATA_DIR, PHOTOS_DIR
+from common import DISMISSED_TODOS_PATH, GARDEN_DB_PATH, GARDEN_INFO_PATH, GARDEN_PHOTOS_DIR
 
-DB_PATH = str(DATA_DIR / 'garden.db')
-INFO_PATH = str(DATA_DIR / 'garden_info.json')
-PHOTOS_DIR = str(PHOTOS_DIR)
-DISMISSED_TODOS_PATH = str(DATA_DIR / 'dismissed_todos.json')
+DB_PATH = str(GARDEN_DB_PATH)
+INFO_PATH = str(GARDEN_INFO_PATH)
+PHOTOS_DIR = str(GARDEN_PHOTOS_DIR)
+DISMISSED_TODOS_PATH = str(DISMISSED_TODOS_PATH)
 REQUEST_QUERY = ''
 
 

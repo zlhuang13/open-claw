@@ -7,9 +7,9 @@ TITLE = '🏠 Home'
 ICON = '🏠'
 DESCRIPTION = '垃圾提醒 · 日常管理'
 
-from common import DATA_DIR
+from common import BIN_CACHE_PATH
 
-BIN_CACHE = str(DATA_DIR / 'bin_cache.txt')
+BIN_CACHE = str(BIN_CACHE_PATH)
 
 
 def is_enabled():

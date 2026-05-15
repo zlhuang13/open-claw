@@ -9,7 +9,7 @@ BASE_DIR = Path(__file__).resolve().parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
-from common import BIND, CAT_PHOTOS_DIR, PHOTOS_DIR, PORT
+from common import BIND, CAT_PHOTOS_DIR, GARDEN_PHOTOS_DIR, PORT
 from modules import discover_modules
 
 MODULES_DIR = BASE_DIR / 'modules'
@@ -66,7 +66,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 data = f.read()
         elif path.startswith('/photos/'):
             rel = path[len('/photos/'):]
-            fpath = PHOTOS_DIR / rel
+            fpath = GARDEN_PHOTOS_DIR / rel
             if '..' in rel or not fpath.is_file():
                 self.send_error(404)
                 return

@@ -11,9 +11,9 @@ TITLE = '📦 Inventory'
 ICON = '📦'
 DESCRIPTION = '物品收纳 · 房间归档'
 
-from common import DATA_DIR
+from common import INVENTORY_DB_PATH
 
-DB_PATH = str(DATA_DIR / 'inventory.db')
+DB_PATH = str(INVENTORY_DB_PATH)
 REQUEST_QUERY = ''
 DEFAULT_ZONES = [
     ('room-001', '001 主卧', 1),
