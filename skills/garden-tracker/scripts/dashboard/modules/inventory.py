@@ -14,15 +14,26 @@ DESCRIPTION = '物品收纳 · 房间归档'
 DB_PATH = '/home/ubuntu/.openclaw/workspace/skills/garden-tracker/data/inventory.db'
 REQUEST_QUERY = ''
 DEFAULT_ZONES = [
-    ('bedroom-master', '主卧', 1),
-    ('bedroom-2', '次卧1', 2),
-    ('bedroom-3', '次卧2', 3),
-    ('living-room', '客厅', 4),
-    ('dining-room', '餐厅', 5),
-    ('bathroom-master', '主卫', 6),
-    ('bathroom-2', '客卫', 7),
-    ('toilet', '独立厕所', 8),
+    ('room-001', '001 主卧', 1),
+    ('room-002', '002 书房（次卧）', 2),
+    ('room-003', '003 Hannah书房', 3),
+    ('room-004', '004 客厅', 4),
+    ('room-005', '005 餐厅', 5),
+    ('room-006', '006 Ensuite', 6),
+    ('room-007', '007 主卫', 7),
+    ('room-008', '008 楼下厕所', 8),
 ]
+
+LEGACY_ZONE_MAP = {
+    'bedroom-master': 'room-001',
+    'bedroom-2': 'room-002',
+    'bedroom-3': 'room-003',
+    'living-room': 'room-004',
+    'dining-room': 'room-005',
+    'bathroom-master': 'room-006',
+    'bathroom-2': 'room-007',
+    'toilet': 'room-008',
+}
 
 
 def set_request_query(query):
@@ -58,10 +69,18 @@ def ensure_db():
         'notes TEXT, '
         'created_at TEXT NOT NULL)'
     )
-    conn.executemany(
-        'INSERT OR IGNORE INTO zones(id, name, sort_order) VALUES (?, ?, ?)',
-        DEFAULT_ZONES,
-    )
+
+    for old_id, new_id in LEGACY_ZONE_MAP.items():
+        conn.execute('UPDATE items SET zone_id = ? WHERE zone_id = ?', (new_id, old_id))
+
+    for zone_id, name, sort_order in DEFAULT_ZONES:
+        conn.execute('INSERT OR IGNORE INTO zones(id, name, sort_order) VALUES (?, ?, ?)', (zone_id, name, sort_order))
+        conn.execute('UPDATE zones SET name = ?, sort_order = ? WHERE id = ?', (name, sort_order, zone_id))
+
+    valid_ids = [zone_id for zone_id, _, _ in DEFAULT_ZONES]
+    placeholders = ','.join('?' for _ in valid_ids)
+    conn.execute(f'DELETE FROM zones WHERE id NOT IN ({placeholders})', valid_ids)
+
     conn.commit()
     conn.close()
 
