@@ -184,7 +184,9 @@ def render():
             '<div class="stat-card"><div class="stat-label">房间数</div><div class="stat-value">' + str(len(zones)) + '</div></div>'
             '<div class="stat-card"><div class="stat-label">已录入物品</div><div class="stat-value">' + str(len(all_items)) + '</div></div>'
             '</div>'
-            '<details class="entry-panel" open><summary>➕ 录入物品</summary>'
+            '<h2>🗂️ 房间浏览</h2>'
+            '<div class="inventory-zone-grid">' + zone_cards + '</div>'
+            '<details class="entry-panel"><summary>➕ 录入物品</summary>'
             '<form class="entry-form" method="get" action="/inventory">'
             '<input type="hidden" name="save_action" value="1">'
             '<div class="form-grid inventory-form-grid">'
@@ -197,6 +199,4 @@ def render():
             '</div>'
             '<button class="submit-btn" type="submit">保存物品</button>'
             + status_html +
-            '</form></details>'
-            '<h2>🗂️ 房间浏览</h2>'
-            '<div class="inventory-zone-grid">' + zone_cards + '</div>')
+            '</form></details>')
