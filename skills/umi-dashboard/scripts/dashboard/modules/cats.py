@@ -550,7 +550,7 @@ root.addEventListener('click', (event) => {{
   }}
   const range = event.target.closest('[data-range]');
   if (range) {{
-    state.params.range = range.dataset.range || 'all';
+    state.params.chart_range = range.dataset.range || 'all';
     updateUrl();
     render();
     return;
@@ -575,6 +575,7 @@ root.addEventListener('click', (event) => {{
     state.params.month = '';
     state.params.q = '';
     state.params.range = 'all';
+    state.params.chart_range = 'all';
     state.params.day = '';
     updateUrl();
     render();
