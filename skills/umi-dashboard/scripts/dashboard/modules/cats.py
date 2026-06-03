@@ -6,6 +6,7 @@ import json
 import os
 import sqlite3
 from collections import Counter, defaultdict
+from datetime import datetime
 from urllib.parse import parse_qs
 
 import matplotlib
@@ -38,11 +39,18 @@ def set_request_query(query):
     REQUEST_QUERY = query or ''
 
 
+def _current_year_month():
+    now = datetime.now()
+    return now.strftime('%Y'), now.strftime('%Y-%m')
+
+
 def _params():
     parsed = parse_qs(REQUEST_QUERY, keep_blank_values=False)
+    current_year, current_month = _current_year_month()
     return {
         'cat': (parsed.get('cat') or [''])[0],
-        'month': (parsed.get('month') or [''])[0],
+        'year': (parsed.get('year') or [current_year])[0],
+        'month': (parsed.get('month') or [current_month])[0],
         'q': (parsed.get('q') or [''])[0],
         'ok': (parsed.get('ok') or [''])[0],
         'range': (parsed.get('range') or ['all'])[0],
@@ -97,6 +105,14 @@ def _all_months():
     rows = [r[0] for r in conn.execute('SELECT DISTINCT substr(entry_date, 1, 7) AS ym FROM diary_entries WHERE entry_date IS NOT NULL AND entry_date != "" ORDER BY ym DESC').fetchall()]
     conn.close()
     return rows
+
+
+def _all_years(months):
+    years = sorted({m[:4] for m in months if m and len(m) >= 4}, reverse=True)
+    current_year, _ = _current_year_month()
+    if current_year not in years:
+        years.insert(0, current_year)
+    return years
 
 
 def _calendar_grid(entries, month_filter):
@@ -223,6 +239,7 @@ def _build_state():
         'profiles': cats_info,
         'entries': entries,
         'months': months,
+        'years': _all_years(months),
         'cat_names': cat_names,
     }
 
@@ -528,6 +545,8 @@ root.addEventListener('click', (event) => {{
     const params = currentParams();
     const url = new URL('/cats', window.location.origin);
     if (params.cat) url.searchParams.set('cat', params.cat);
+    if (params.year) url.searchParams.set('year', params.year);
+    if (params.month) url.searchParams.set('month', params.month);
     url.searchParams.set('ok', '1');
     url.searchParams.set('prefill_date', quick.dataset.quickDate || '');
     url.searchParams.set('prefill_content', quick.dataset.quickContent || '');
@@ -537,6 +556,7 @@ root.addEventListener('click', (event) => {{
   }}
   if (event.target.closest('[data-filter-reset]')) {{
     state.params.cat = '';
+    state.params.year = '';
     state.params.month = '';
     state.params.q = '';
     state.params.range = 'all';
