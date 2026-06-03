@@ -454,7 +454,8 @@ function chartHtml(entries) {{
   if (!weights.length) return '<h2>⚖️ 体重折线图</h2><div class="weight-chart-card"><p class="empty">当前月份还没有体重记录～</p></div>';
   const p = currentParams();
   const rangeButtons = [['3m', '最近3个月'], ['1y', '最近1年'], ['all', '全部']].map(([key, label]) => `<button class="range-chip ${{(p.range || 'all') === key ? 'active' : ''}}" type="button" data-range="${{key}}">${{label}}</button>`).join('');
-  const chartParams = new URLSearchParams({{cat: p.cat || '', month: p.month || '', q: p.q || '', range: p.range || 'all', v: Date.now().toString()}});
+  const chartMonth = weights.map((entry) => entry.entry_date || '').filter(Boolean).sort().slice(-1)[0]?.slice(0, 7) || '';
+  const chartParams = new URLSearchParams({{cat: p.cat || '', month: chartMonth, q: p.q || '', range: p.range || 'all', v: Date.now().toString()}});
   return `<h2>⚖️ 体重折线图</h2><div class="range-chip-row">${{rangeButtons}}</div><div class="weight-chart-card"><img id="weight-chart-img" class="weight-chart" src="/cats/weight-chart.png?${{chartParams.toString()}}" alt="体重折线图"></div>`;
 }}
 
