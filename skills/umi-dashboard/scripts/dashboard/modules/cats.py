@@ -327,7 +327,18 @@ function formatAge(birthdayRaw) {{
 }}
 
 function currentParams() {{
-  return state.params || {{cat:'',month:'',q:'',range:'all'}};
+  return state.params || {{cat:'',year:'',month:'',q:'',range:'all'}};
+}}
+
+function monthsForYear(year) {{
+  return (state.months || []).filter((month) => !year || month.startsWith(year + '-'));
+}}
+
+function syncMonthForYear() {{
+  const p = currentParams();
+  const months = monthsForYear(p.year);
+  if (p.month && months.includes(p.month)) return;
+  p.month = months[0] || '';
 }}
 
 function filteredEntries() {{
@@ -354,7 +365,7 @@ function weightEntries(entries) {{
 function updateUrl(extra = {{}}) {{
   const p = currentParams();
   const params = new URLSearchParams();
-  for (const key of ['cat', 'month', 'q', 'range', 'ok', 'prefill_content', 'prefill_tag', 'prefill_date']) {{
+  for (const key of ['cat', 'year', 'month', 'q', 'range', 'ok', 'prefill_content', 'prefill_tag', 'prefill_date', 'day']) {{
     const value = extra[key] !== undefined ? extra[key] : p[key];
     if (value) params.set(key, value);
   }}
@@ -412,10 +423,12 @@ function quickActionsHtml() {{
 function filterBarHtml() {{
   const p = currentParams();
   const catOptions = ['<option value="">全部猫咪</option>'].concat((state.cat_names || []).map((name) => `<option value="${{esc(name)}}" ${{p.cat === name ? 'selected' : ''}}>${{esc(name)}}</option>`)).join('');
-  const monthOptions = ['<option value="">全部月份</option>'].concat((state.months || []).map((month) => `<option value="${{esc(month)}}" ${{p.month === month ? 'selected' : ''}}>${{esc(month)}}</option>`)).join('');
+  const yearOptions = ['<option value="">全部年份</option>'].concat((state.years || []).map((year) => `<option value="${{esc(year)}}" ${{p.year === year ? 'selected' : ''}}>${{esc(year)}}</option>`)).join('');
+  const monthOptions = ['<option value="">全部月份</option>'].concat(monthsForYear(p.year).map((month) => `<option value="${{esc(month)}}" ${{p.month === month ? 'selected' : ''}}>${{esc(month)}}</option>`)).join('');
   return `<h2>🔎 快速筛选</h2>
   <form class="filter-bar" id="cats-filter-form">
     <select name="cat">${{catOptions}}</select>
+    <select name="year">${{yearOptions}}</select>
     <select name="month">${{monthOptions}}</select>
     <input type="text" name="q" placeholder="搜症状、饮食、备注" value="${{esc(p.q || '')}}">
     <button type="submit">筛选</button>
@@ -438,7 +451,7 @@ function symptomHtml(entries) {{
 
 function chartHtml(entries) {{
   const weights = weightEntries(entries);
-  if (!weights.length) return '';
+  if (!weights.length) return '<h2>⚖️ 体重折线图</h2><div class="weight-chart-card"><p class="empty">当前月份还没有体重记录～</p></div>';
   const p = currentParams();
   const rangeButtons = [['3m', '最近3个月'], ['1y', '最近1年'], ['all', '全部']].map(([key, label]) => `<button class="range-chip ${{(p.range || 'all') === key ? 'active' : ''}}" type="button" data-range="${{key}}">${{label}}</button>`).join('');
   const chartParams = new URLSearchParams({{cat: p.cat || '', month: p.month || '', q: p.q || '', range: p.range || 'all', v: Date.now().toString()}});
@@ -502,6 +515,7 @@ function diaryHtml(entries) {{
 }}
 
 function render() {{
+  syncMonthForYear();
   const entries = filteredEntries();
   root.innerHTML = `<p class="stats">共 ${{(state.profiles || []).length}} 只猫 · ${{entries.length}} 条匹配记录</p>
     ${{state.profiles && state.profiles.length ? `<h2>🐈 猫咪们</h2><div class="cat-grid">${{state.profiles.map(profileHtml).join('')}}</div>` : ''}}
@@ -572,6 +586,7 @@ root.addEventListener('submit', (event) => {{
   event.preventDefault();
   const data = new FormData(form);
   state.params.cat = String(data.get('cat') || '');
+  state.params.year = String(data.get('year') || '');
   state.params.month = String(data.get('month') || '');
   state.params.q = String(data.get('q') || '');
   state.params.day = '';
@@ -584,6 +599,7 @@ root.addEventListener('change', (event) => {{
   if (!form) return;
   const data = new FormData(form);
   state.params.cat = String(data.get('cat') || '');
+  state.params.year = String(data.get('year') || '');
   state.params.month = String(data.get('month') || '');
   state.params.q = String(data.get('q') || '');
   state.params.day = '';
