@@ -189,7 +189,7 @@ def nav():
 
 def render_weight_chart(params=None):
     params = params or _params()
-    entries = _load_entries(params.get('cat', ''), params.get('month', ''), params.get('q', ''))
+    entries = _load_entries('', '', '')
     weight_entries = [e for e in entries if '体重' in (e.get('tags') or []) and e.get('weight') not in (None, '')]
     if not weight_entries:
         return None
@@ -390,7 +390,7 @@ function profileHtml(info) {{
 
 function statsHtml(entries) {{
   const plain = nonWeightEntries(entries);
-  const weights = weightEntries(entries);
+  const weights = weightEntries(state.entries || []);
   const latestWeights = new Map();
   const alerts = [];
   for (const cat of state.cat_names || []) {{
@@ -450,7 +450,7 @@ function symptomHtml(entries) {{
 }}
 
 function chartHtml(entries) {{
-  const weights = weightEntries(entries);
+  const weights = weightEntries(state.entries || []);
   if (!weights.length) return '<h2>⚖️ 体重折线图</h2><div class="weight-chart-card"><p class="empty">当前月份还没有体重记录～</p></div>';
   const p = currentParams();
   const rangeButtons = [['3m', '最近3个月'], ['1y', '最近1年'], ['all', '全部']].map(([key, label]) => `<button class="range-chip ${{(p.range || 'all') === key ? 'active' : ''}}" type="button" data-range="${{key}}">${{label}}</button>`).join('');
