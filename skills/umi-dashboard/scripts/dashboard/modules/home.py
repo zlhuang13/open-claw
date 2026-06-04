@@ -24,6 +24,10 @@ def render():
     try:
         with open(BIN_CACHE, 'r') as f:
             bin_info = f.read().strip()
+        bin_info = (bin_info
+            .replace('📅 本周', '📅 This week')
+            .replace('📅 下周', '📅 Next week')
+            .replace('📅 下下周', '📅 Week after next'))
         bin_html = html_mod.escape(bin_info).replace('\n', '<br>')
     except Exception:
         bin_html = '暂无数据，请稍后刷新'
@@ -40,7 +44,7 @@ def render():
         <div class="subcard-kicker">Household</div>
         <h3>🗑️ 垃圾提醒</h3>
         <div class="bin-info">{bin_html}</div>
-        <p class="hint">📍 26 Oak Hill Lane, Didcot OX11 6AP · 每周五收集 · 数据每周四更新</p>
+        <p class="hint">📍 26 Oak Hill Lane, Didcot OX11 6AP · 每周五收集 · 数据每周四早上 9 点更新</p>
     </div>
     <div class="home-card home-subcard soft">
         <div class="subcard-kicker">More soon</div>
