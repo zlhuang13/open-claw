@@ -46,8 +46,14 @@ When adding a new plant:
   - `watering_freq` if inferable
   - `status` default `healthy` unless user says otherwise
   - `notes`
+- Also proactively fill, without asking the user unless truly blocked:
+  - cat risk level and hidden rationale fields
+  - a short pruning suggestion in notes when the plant is identifiable enough
+  - photo import if an inbound image was provided
+  - best-effort location/zone from the message context
 - Keep uncertain facts in notes instead of pretending certainty.
 - If zone is described informally (for example “花园右侧”), map it to the closest known zone and say the assumption briefly.
+- Default behavior for this household: when the user says “录入db” or equivalent, do the whole intake pass instead of asking follow-up questions one by one.
 
 ## Zone Handling
 
