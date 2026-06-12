@@ -483,7 +483,12 @@ function calendarHtml(entries) {{
   const cells = [];
   for (let i = 0; i < jsStart; i++) cells.push('<div class="calendar-cell empty-cell"></div>');
   for (let day = 1; day <= lastDay; day++) {{
-    const items = (dayMap.get(day) || []).slice(0, 3).map((entry) => `<div class="calendar-item ${{(entry.cats || []).includes('Moscar') ? 'cat-moscar' : 'cat-nomi'}}"><span class="calendar-note">${{esc(((entry.tags || [])[0] || entry.content || '记录'))}}</span></div>`).join('');
+    const items = (dayMap.get(day) || []).slice(0, 3).map((entry) => {{
+      const symptomTags = (entry.tags || []).filter((tag) => tag !== '体重' && tag !== 'Moscar' && tag !== 'Nomi' && tag !== 'Nomi（糯米）');
+      const label = symptomTags[0] || entry.symptom || '记录';
+      const cls = (entry.cats || []).includes('Moscar') ? 'cat-moscar' : 'cat-nomi';
+      return `<div class="calendar-item ${{cls}}"><span class="calendar-note">${{esc(label)}}</span></div>`;
+    }}).join('');
     const moreCount = Math.max((dayMap.get(day) || []).length - 3, 0);
     const active = currentParams().day === String(day).padStart(2, '0') ? ' selected-day' : '';
     cells.push(`<button type="button" class="calendar-cell calendar-button${{active}}" data-calendar-day="${{String(day).padStart(2, '0')}}"><div class="calendar-day">${{day}}</div>${{items}}${{moreCount ? `<div class="calendar-more">+${{moreCount}} 条</div>` : ''}}</button>`);
