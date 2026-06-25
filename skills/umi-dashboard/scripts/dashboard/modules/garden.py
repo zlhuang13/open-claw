@@ -342,7 +342,8 @@ function zoneHtml(zone) {{
 function plantHtml(p) {{
   const active = state.params.plant === p.id ? ' active' : '';
   const selected = state.params.plant === p.id ? '<span class="entry-tag">当前目标</span>' : '';
-  const photo = p.photo ? `<img class="plant-photo" src="${{esc(p.photo)}}" alt="${{esc(p.name_cn)}}" loading="lazy">` : '';
+  const photoStyle = p.id === 'P024' ? ' style="object-position: center 55%;"' : '';
+  const photo = p.photo ? `<img class="plant-photo" src="${{esc(p.photo)}}" alt="${{esc(p.name_cn)}}" loading="lazy"${{photoStyle}}>` : '';
   const catRisk = p.cat_risk_label ? `<span class="entry-tag cat-risk-tag">猫咪风险 ${{esc(p.cat_risk_label)}}</span>` : '<span class="entry-tag cat-risk-tag">猫咪风险 ⚪ 未标注</span>';
   const lifespan = p.lifespan ? `<span class="entry-tag lifespan-tag">${{esc(p.lifespan)}}</span>` : '';
   const care = (p.care || []).map((c) => `<li>${{esc(c.date)}} · ${{esc(c.action_type)}} · ${{esc(c.notes || '')}}</li>`).join('');

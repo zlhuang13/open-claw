@@ -1,0 +1,36 @@
+# Local/runtime state
+.openclaw/
+node_modules/
+tmp/
+generated/
+state/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Logs and ad-hoc outputs
+*.log
+news-digest-output.txt
+market-analysis.txt
+market_analysis_output.txt
+test-write.txt
+bin_result*.png
+bin_step*.png
+
+# Memory runtime extras
+memory/.dreams/
+memory/heartbeat-state.json
+memory/*-test.md
+
+# Large/generated media not meant for git
+skills/garden-tracker/photos/
+
+# Runtime databases and caches (existing tracked files may remain historically)
+skills/*/data/*.db
+skills/*/data/*.sqlite
+skills/market-analyst/analysis_report.md
+skills/market-analyst/daily_analysis_*.txt
+
+# Dashboard / local cache outputs
+skills/umi-dashboard/data/bin_cache.txt

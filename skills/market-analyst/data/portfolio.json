@@ -1,0 +1,71 @@
+{
+  "capital": 5000,
+  "currency": "GBP",
+  "usdRate": 1.27,
+  "market": "US",
+  "platform": "Trading212",
+  "created": "2026-04-23",
+  "holdings": [
+    {
+      "ticker": "AAPL",
+      "name": "Apple",
+      "sector": "Technology",
+      "shares": 5,
+      "avgCost": 185.00,
+      "notes": "科技龙头，稳健增长"
+    },
+    {
+      "ticker": "NVDA",
+      "name": "NVIDIA",
+      "sector": "Technology",
+      "shares": 2,
+      "avgCost": 130.00,
+      "notes": "AI芯片垄断地位"
+    },
+    {
+      "ticker": "MSFT",
+      "name": "Microsoft",
+      "sector": "Technology",
+      "shares": 3,
+      "avgCost": 420.00,
+      "notes": "云+AI双重驱动"
+    },
+    {
+      "ticker": "JPM",
+      "name": "JPMorgan Chase",
+      "sector": "Financials",
+      "shares": 5,
+      "avgCost": 195.00,
+      "notes": "银行股龙头，利率敏感"
+    },
+    {
+      "ticker": "JNJ",
+      "name": "Johnson & Johnson",
+      "sector": "Healthcare",
+      "shares": 6,
+      "avgCost": 155.00,
+      "notes": "防御型医疗蓝筹"
+    },
+    {
+      "ticker": "XOM",
+      "name": "ExxonMobil",
+      "sector": "Energy",
+      "shares": 7,
+      "avgCost": 108.00,
+      "notes": "能源板块对冲，高股息"
+    },
+    {
+      "ticker": "AMZN",
+      "name": "Amazon",
+      "sector": "Consumer/Tech",
+      "shares": 4,
+      "avgCost": 180.00,
+      "notes": "电商+AWS+AI"
+    }
+  ],
+  "cashGBP": 412.56,
+  "cashUSD": 523.95,
+  "investedUSD": 5826.00,
+  "totalUSD": 6349.95,
+  "history": []
+}

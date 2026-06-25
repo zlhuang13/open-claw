@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#1a1a2e"/>
+      <stop offset="100%" stop-color="#0a0a0f"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="50%" cy="35%" r="30%">
+      <stop offset="0%" stop-color="#4a4a6a" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </radialGradient>
+  </defs>
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="98" fill="url(#bg)" stroke="#2a2a3e" stroke-width="2"/>
+  <!-- Glow -->
+  <circle cx="100" cy="80" r="60" fill="url(#glow)"/>
+  <!-- Cat ears -->
+  <polygon points="45,70 30,25 75,55" fill="#1a1a2e" stroke="#3a3a5e" stroke-width="1.5"/>
+  <polygon points="155,70 170,25 125,55" fill="#1a1a2e" stroke="#3a3a5e" stroke-width="1.5"/>
+  <polygon points="50,67 38,32 73,56" fill="#16162a"/>
+  <polygon points="150,67 162,32 127,56" fill="#16162a"/>
+  <!-- Cat face -->
+  <ellipse cx="100" cy="110" rx="52" ry="48" fill="#1a1a2e" stroke="#3a3a5e" stroke-width="1.5"/>
+  <!-- Eyes -->
+  <ellipse cx="80" cy="105" rx="12" ry="14" fill="#0d0d15"/>
+  <ellipse cx="120" cy="105" rx="12" ry="14" fill="#0d0d15"/>
+  <!-- Eye shine -->
+  <ellipse cx="84" cy="100" rx="4" ry="5" fill="#6a6a9a" opacity="0.8"/>
+  <ellipse cx="124" cy="100" rx="4" ry="5" fill="#6a6a9a" opacity="0.8"/>
+  <circle cx="78" cy="108" r="2" fill="#8888bb" opacity="0.5"/>
+  <circle cx="118" cy="108" r="2" fill="#8888bb" opacity="0.5"/>
+  <!-- Nose -->
+  <polygon points="100,118 96,124 104,124" fill="#3a3a5e"/>
+  <!-- Mouth -->
+  <path d="M93,126 Q100,132 107,126" fill="none" stroke="#3a3a5e" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Whiskers -->
+  <line x1="55" y1="118" x2="75" y2="122" stroke="#3a3a5e" stroke-width="1" opacity="0.6"/>
+  <line x1="55" y1="126" x2="75" y2="126" stroke="#3a3a5e" stroke-width="1" opacity="0.6"/>
+  <line x1="125" y1="122" x2="145" y2="118" stroke="#3a3a5e" stroke-width="1" opacity="0.6"/>
+  <line x1="125" y1="126" x2="145" y2="126" stroke="#3a3a5e" stroke-width="1" opacity="0.6"/>
+  <!-- K letter on forehead -->
+  <text x="100" y="85" text-anchor="middle" font-family="Georgia, serif" font-size="18" font-weight="bold" fill="#4a4a7a" opacity="0.6">K</text>
+</svg>
