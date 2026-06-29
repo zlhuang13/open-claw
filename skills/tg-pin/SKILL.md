@@ -1,6 +1,7 @@
 ---
 name: tg-pin
 description: Send a Telegram message and pin it in a chat. Use when the user asks to pin a message on Telegram, send-and-pin a message, or pin an existing message by message_id. Also use for unpin requests. Works by calling the Telegram Bot API directly since OpenClaw's built-in `message pin` action does not support Telegram.
+allowed-tools: Read, Bash
 ---
 
 # tg-pin

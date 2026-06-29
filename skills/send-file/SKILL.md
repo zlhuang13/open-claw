@@ -1,6 +1,7 @@
 ---
 name: send-file
 description: Send a file from the server to a Telegram user. Use when Jerry or any user asks to send, share, or deliver a file via Telegram. Triggers on phrases like "send me the file", "发文件给我", "把这个文件发过来", "share this file", or any request to deliver a workspace file to a chat.
+allowed-tools: Read, Bash
 ---
 
 # Send File
